@@ -1,3 +1,46 @@
+# Kubernetes Multi-cluster Service Discovery using the AWS Cloud Map MCS Controller
+
+## Introduction
+
+Kubernetes, with it's implementation of the cluster construct has simplified the ability to schedule workloads across a collection of VMs or nodes. Declarative configuration, immutability, auto-scaling, and self healing have vastly simplified the paradigm of workload management within the cluster - which has enabled teams to move at ever increasing velocities. 
+
+As the rate of Kubernetes adoption continues to increase within organisations, we're observing a corresponding increase in the number of use cases that require workloads to break through the perimeter of the single cluster construct. Requirements concerning workload location/proximity, isolation, and reliability have been the primary catalyst for the emergence of deployment scenarios where a single logical workload will span multiple Kubernetes clusters:
+
+- **Location** based concerns include network latency requirements (e.g. bringing the application as close to users as possible), data gravity requirements (e.g. bringing elements of the application as close to fixed data sources as possible), and jurisdiction based requirements (e.g. data residency limitations imposed via governing bodies);
+- **Isolation** based concerns include performance (e.g. reduction in "noisy-neighbor" in mixed workload clusters), environmental (e.g. by staged or sandboxed workload constructs such as "dev", "test", and "prod" environments), security (e.g. separating untrusted code or sensitive data), organisational (e.g. teams fall under different business units or management domains), and cost based (e.g. teams are subject to separate budgetary constraints);
+- **Reliability** based concerns include blast radius and infrastructure diversity (e.g. preventing an application based or underlying infrastructure issue in one cluster or provider zone from impacting the entire solution), and scale based (e.g. the workload may outgrow a single cluster)
+
+Multi-cluster application architectures tend to be designed to either be **replicated** in nature - with this pattern each participating cluster runs a full copy of each given application; or alternatively they implement more of a **group-by-service** pattern where the services of a single application or system are split or divided amongst multiple clusters.
+
+When it comes to the configuration of Kubernetes (and the surrounding infrastructure) to support a given multi-cluster application architecture - the space has evolved over time to include a number of approaches. Implementations tend draw upon a combination of components at various levels of the stack, and generally speaking they also vary in terms of the "weight" or complexity of the implementation, number and scope of features offered, as well as the associated management overhead. In simple terms these approaches can be loosely grouped into two main categories:
+
+### About the Multi-cluster Service API
+
+Kubernetes' familiar [Service](https://cloud.google.com/kubernetes-engine/docs/concepts/service) object lets you discover and access services within the boundary of a single Kubernetes cluster. The mcs-api implements a Kubernetes-native extension to the Service API, extending the scope of the service resource concept beyond the cluster boundary - providing a mechanism to stitch your multiple clusters together using standard (and familiar) DNS based service discovery.
+
+> [KEP-1645: Multi-Cluster Services API](https://github.com/kubernetes/enhancements/tree/master/keps/sig-multicluster/1645-multi-cluster-services-api#kep-1645-multi-cluster-services-api) provides the formal description of the Multi Cluster Service API. KEP-1645 doesn't define a complete implementation - it serves to define how an implementation should behave.At the time of writing the mcs-api version is: `multicluster.k8s.io/v1alpha1`
+
+The primary deployment scenarios covered by the mcs-api include:
+
+- **Different services each deployed to separate clusters:** I have 2 clusters, each running different services managed by different teams, where services from one team depend on services from the other team. I want to ensure that a service from one team can discover a service from the other team (via DNS resolving to VIP), regardless of the cluster that they reside in. In addition, I want to make sure that if the dependent service is migrated to another cluster, the dependee is not impacted.
+- **Single service deployed to multiple clusters:** I have deployed my stateless service to multiple clusters for redundancy or scale. Now I want to propagate topologically-aware service endpoints (local, regional, global) to all clusters, so that other services in my clusters can access instances of this service in priority order based on availability and locality.
+
+The mcs-api is able to support these use cases through the described properties of a "clusterset", which is a group of clusters with a high degree of mutual trust and shared ownership that share services amongst themselves - along with two additional API objects: the `serviceexport` and the `serviceimport`.
+
+Services are not visible to other clusters in the clusterset by default, they must be explicitly marked for export by the user. Creating a `serviceexport` object for a given service specifies that the service should be exposed across all clusters in the clusterset. The mcs-api implementation (typically a controller) will automatically generate a corresponding `serviceimport` object (which serves as the in-cluster representation of a multi-cluster service) in each importing cluster for consumer workloads to be able to locate and consume the exported service.
+
+DNS-based service discovery for `serviceimport` objects is facilitated by the [Kubernetes DNS-Based Multicluster Service Discovery Specification](https://github.com/kubernetes/enhancements/pull/2577) which extends the standard Kubernetes DNS paradigms by implementing records named by service and namespace for `serviceimport` objects, but as differentiated from regular in-cluster DNS service names by using the special zone `.cluster***\*set\****.local`. i.e. When a `serviceexport` is created, this will cause a FQDN for the multi-cluster service to become available from within the clusterset. The domain name will be `<service>.<ns>.svc.clusterset.local`.
+
+#### AWS Cloud Map MCS Controller for Kubernetes
+
+The [AWS Cloud Map MCS Controller for Kubernetes](https://github.com/aws/aws-cloud-map-mcs-controller-for-k8s) (CMCK) is an open source project that implements the multi-cluster services API specification. 
+
+The CMCK is a controller that syncs services across clusters and makes them available for multi-cluster service discovery and connectivity. The implementation model is decentralsised, and utilises AWS Cloud Map as a central registry for registration and distribution of multi-cluster service data.
+
+#### AWS Cloud Map
+
+AWS Cloud Map is a cloud resource discovery service that Cloud Map allows applications to discover web-based services via AWS SDK, API calls, or DNS queries. Cloud Map is a fully managed service which eliminates the need to set up, update, and manage your own service discovery tools and software.
+
 
 
 ## Tutorial
@@ -6,7 +49,11 @@
 
 Let's consider a deployment scenario where we provision a Service into a single EKS cluster, then make the service available from within a second EKS cluster using the AWS Cloud Map MCS Controller.
 
+
+
 ![alt text](images/solution-baseline-v0.01.png "Solution Baseline")
+
+
 
 In reference to the Solution Baseline diagram:
 
@@ -22,9 +69,7 @@ In reference to the Solution Baseline diagram:
   - Service | nginx-hello: 172.20.58.137:80
   - Endpoints | nginx-hello: 10.10.11.140:80,10.10.16.197:80,10.10.22.87:80
 
-![alt text](images/service-provisioning-v0.01.png "Service Provisioning")
-
-With the required dependencies in place, the admin user is able to create a `serviceexport` object in cls1 for the `nginx-hello` Service, such that the MCS-Controller implementation will automatically provision a corresponding `serviceimport` in cls2 for consumer workloads to be able to locate and consume the exported service.
+![alt text](images/service-provisioning-v0.01.png "Service Provisioning")With the required dependencies in place, the admin user is able to create a `serviceexport` object in cls1 for the `nginx-hello` Service, such that the MCS-Controller implementation will automatically provision a corresponding `serviceimport` in cls2 for consumer workloads to be able to locate and consume the exported service.
 
 In reference to the Service Provisioning diagram:
 
