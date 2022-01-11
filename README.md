@@ -14,6 +14,12 @@ Multi-cluster application architectures tend to be designed to either be **repli
 
 When it comes to the configuration of Kubernetes (and the surrounding infrastructure) to support a given multi-cluster application architecture - the space has evolved over time to include a number of approaches. Implementations tend draw upon a combination of components at various levels of the stack, and generally speaking they also vary in terms of the "weight" or complexity of the implementation, number and scope of features offered, as well as the associated management overhead. In simple terms these approaches can be loosely grouped into two main categories:
 
+* **Network-centric** approaches focus on network interconnection tooling to implement connectivity between clusters in order to facilitate cross-cluster application communication. The various network-centric approaches include those that are tightly coupled with the CNI (e.g. Cillium Mesh), as well as more CNI agnostic implementations such as Submariner and Skupper. Service mesh implementations also fall into the network-centric category, and these include Istio’s multi-cluster support, Linkerd service mirroring, Kuma from Kong, and Consul’s mesh gateway. There are also various multi-cluster ingress approaches, as well as virtual-kubelet based approaches including Admiralty, Tensile-kube, and Liqo.
+* **Kubernetes-centric** approaches focus on supporting and extending the core Kubernetes primitives in order to support multi-cluster use cases. These approaches fall under the stewardship of the Kubernetes [Multicluster Special Interest Group](https://github.com/kubernetes/community/tree/master/sig-multicluster) whose charter is focused on designing, implementing, and maintaining API’s, tools, and documentation related to multi-cluster administration and application management. Subprojects include:
+  * **[kubefed](https://github.com/kubernetes-sigs/kubefed)** (Kubernetes Cluster Federation) which implements a mechanism to coordinate the configuration of multiple Kubernetes clusters from a single set of APIs in a hosting cluster. kubefed is considered to be foundational for more complex multi-cluster use cases such as deploying multi-geo applications, and disaster recovery.
+  * **[work-api](https://github.com/kubernetes-sigs/work-api)** (Multi-Cluster Works API) aims to group a set of Kubernetes API resources to be applied to one or multiple clusters together as a concept of “work” or “workload” for the purpose of multi-cluster workload lifecycle mangement.
+  * **[mcs-api](https://github.com/kubernetes-sigs/mcs-api)** (Multi-cluster Services APIs) implements a new API to extend the single-cluster bounded Kubernetes service concept to function across multiple clusters.
+
 ### About the Multi-cluster Service API
 
 Kubernetes' familiar [Service](https://cloud.google.com/kubernetes-engine/docs/concepts/service) object lets you discover and access services within the boundary of a single Kubernetes cluster. The mcs-api implements a Kubernetes-native extension to the Service API, extending the scope of the service resource concept beyond the cluster boundary - providing a mechanism to stitch your multiple clusters together using standard (and familiar) DNS based service discovery.
@@ -69,7 +75,11 @@ In reference to the Solution Baseline diagram:
   - Service | nginx-hello: 172.20.58.137:80
   - Endpoints | nginx-hello: 10.10.11.140:80,10.10.16.197:80,10.10.22.87:80
 
-![alt text](images/service-provisioning-v0.01.png "Service Provisioning")With the required dependencies in place, the admin user is able to create a `serviceexport` object in cls1 for the `nginx-hello` Service, such that the MCS-Controller implementation will automatically provision a corresponding `serviceimport` in cls2 for consumer workloads to be able to locate and consume the exported service.
+With the required dependencies in place, the admin user is able to create a `serviceexport` object in cls1 for the `nginx-hello` Service, such that the MCS-Controller implementation will automatically provision a corresponding `serviceimport` in cls2 for consumer workloads to be able to locate and consume the exported service.
+
+
+
+![alt text](images/service-provisioning-v0.01.png "Service Provisioning")
 
 In reference to the Service Provisioning diagram:
 
@@ -77,8 +87,12 @@ In reference to the Service Provisioning diagram:
 2. The MCS-Controller in cls1, watching for `serviceexport` object creation provisions a corresponding `nginx-hello` service in the Cloud Map `demo` namespace. The Cloud Map service is provisioned with sufficient detail for the Service object and corresponding Endpoint Slice to be provisioned within additional clusters in the ClusterSet.
 3. The MCS-Controller in cls2 responds to the creation of the `nginx-hello` Cloud Map Service by provisioning the `serviceimport` object and corresponding Endpoint Slice objects via the Kube API Server.
 4. The CoreDNS multicluster plugin, watching for `serviceimport` and `endpointslice` creation provisions corresponding DNS records within the `.clusterset.local` zone.
+   
+   
 
-![alt text](images/service-consumption-v0.01.png "Service Consumption")In reference to the Service Consumption diagram:
+![alt text](images/service-consumption-v0.01.png "Service Consumption")
+
+In reference to the Service Consumption diagram:
 
 1. The `client-hello` pod in cls2 needs to consume the `nginx-hello` service, which has endpoints deployed in cls1. The `client-hello` pod requests the resource http://nginx-hello.demo.svc.clusterset.local:80. DNS based service discovery [1b] responds with the IP address of the local `nginx-hello` ClusterSetIP Service.
 
