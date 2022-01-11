@@ -55,13 +55,15 @@ AWS Cloud Map is a cloud resource discovery service that Cloud Map allows applic
 
 Let's consider a deployment scenario where we provision a Service into a single EKS cluster, then make the service available from within a second EKS cluster using the AWS Cloud Map MCS Controller.
 
+> This tutorial will take you through the end-end implementation of the solution as outlined herein, including a functional implementation of the AWS Cloud Map MCS Controller across x2 EKS clusters situated in separate VPCs.
+
 
 
 ![alt text](images/solution-baseline-v0.01.png "Solution Baseline")
 
 
 
-In reference to the Solution Baseline diagram:
+In reference to the **Solution Baseline** diagram:
 
 - We have x2 EKS clusters (cls1 & cls2), each deployed into separate VPCs within a single AWS region.
   - cls1 VPC CIDR: 10.10.0.0/16, Kubernetes service IPv4 CIDR: 172.20.0.0/16
@@ -81,7 +83,7 @@ With the required dependencies in place, the admin user is able to create a `ser
 
 ![alt text](images/service-provisioning-v0.01.png "Service Provisioning")
 
-In reference to the Service Provisioning diagram:
+In reference to the **Service Provisioning** diagram:
 
 1. The administrator submits the request to the cls1 Kube API server for a `serviceexport` object to be created for ClusterIP Service `nginx-hello` in the `demo` Namespace.
 2. The MCS-Controller in cls1, watching for `serviceexport` object creation provisions a corresponding `nginx-hello` service in the Cloud Map `demo` namespace. The Cloud Map service is provisioned with sufficient detail for the Service object and corresponding Endpoint Slice to be provisioned within additional clusters in the ClusterSet.
@@ -92,7 +94,7 @@ In reference to the Service Provisioning diagram:
 
 ![alt text](images/service-consumption-v0.01.png "Service Consumption")
 
-In reference to the Service Consumption diagram:
+In reference to the **Service Consumption** diagram:
 
 1. The `client-hello` pod in cls2 needs to consume the `nginx-hello` service, which has endpoints deployed in cls1. The `client-hello` pod requests the resource http://nginx-hello.demo.svc.clusterset.local:80. DNS based service discovery [1b] responds with the IP address of the local `nginx-hello` ClusterSetIP Service.
 
@@ -102,7 +104,7 @@ In reference to the Service Consumption diagram:
 
 Note: In accordance with the mcs-api specification, a multi-cluster service will be imported by all clusters in which the service's namespace exists, meaning that each exporting cluster will also import the corresponding multi-cluster service. As such the `nginx-hello` service will also be accessible via ClusterSetIP Service on cls1 at `nginx-hello.demo.svc.clusterset.local`.
 
-### Solution Baseline
+### Solution Baseline Implementation
 
 To prepare your environment to match the Solution Baseline deployment scenario, the following prerequisites should be addressed.
 
