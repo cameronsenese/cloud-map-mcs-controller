@@ -109,7 +109,7 @@ In reference to the **Service Consumption** diagram:
 1. The `client-hello` pod in Cluster 2 needs to consume the `nginx-hello` service, for which all Endpoints are deployed in Cluster 1. The `client-hello` pod requests the resource http://nginx-hello.demo.svc.clusterset.local:80. DNS based service discovery [1b] responds with the IP address of the local `nginx-hello` `ServiceExport` Service `ClusterSetIP`.
 2. Requests to the local `ClusterSetIP` at `nginx-hello.demo.svc.clusterset.local` are proxied to the Endpoints located on Cluster 1.
 
-Note: In accordance with the mcs-api specification, a multi-cluster service will be imported by all clusters in which the service's namespace exists, meaning that each exporting cluster will also import the corresponding multi-cluster service. As such, the `nginx-hello` service will also be accessible via `ServiceExport` Service `ClusterSetIP` on Cluster 1. Identical to Cluster 2, the `ServiceExport` Service is resolvable by name at `nginx-hello.demo.svc.clusterset.local`.
+*Note: In accordance with the mcs-api specification, a multi-cluster service will be imported by all clusters in which the service's namespace exists, meaning that each exporting cluster will also import the corresponding multi-cluster service. As such, the `nginx-hello` service will also be accessible via `ServiceExport` Service `ClusterSetIP` on Cluster 1. Identical to Cluster 2, the `ServiceExport` Service is resolvable by name at `nginx-hello.demo.svc.clusterset.local`.*
 
 ### Implementation
 
