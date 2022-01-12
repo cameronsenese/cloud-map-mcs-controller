@@ -534,7 +534,7 @@ URI: /
 Request ID: cda0f25bcb40ade268bed2c9a9f75e91
 ```
 
-Note that the responding Server Names and Server addresses are those of the `nginx-demo` Pods on Cluster 1 - confirming that the requests to the local `ClusterSetIP` at `nginx-hello.demo.svc.clusterset.local` on Cluster 2 are proxied cross-cluster to the Endpoints located on Cluster 1!
+Note that the responding Server Names and Server addresses are those of the `nginx-demo` Pods on Cluster 1 - confirming that the requests to the local `ClusterSetIP` at `nginx-hello.demo.svc.clusterset.local` originating on Cluster 2 are proxied cross-cluster to the Endpoints located on Cluster 1!
 
 ## Conclusion
 
