@@ -329,7 +329,7 @@ Let's verify the `ServiceExport` creation has succeeded, and that corresponding 
 
 Inspecting the MCS-Controller logs in Cluster 1, we see that the controller has detected the `ServiceExport` object, and created the corresponding `demo` Namespace and `nginx-hello` Service in Cloud Map: 
 
-```json
+```yaml
 $ kubectl logs cloud-map-mcs-controller-manager-5b9f959fc9-hmz88 -c manager --namespace cloud-map-mcs-system
 {"level":"info","ts":1641898137.1080713,"logger":"controllers.ServiceExport","msg":"updating Cloud Map service","namespace":"demo","name":"nginx-hello"}
 {"level":"info","ts":1641898137.1081324,"logger":"cloudmap","msg":"fetching a service","namespace":"demo","name":"nginx-hello"}
@@ -436,7 +436,7 @@ $ aws servicediscovery discover-instances --namespace-name demo --service-name n
 Inspecting the MCS-Controller logs in Cluster 2, we see that the controller has detected the `nginx-hello` Cloud Map Service, and created the corresponding Kubernetes `ServiceImport`:
 
 ```yaml
-kubectl logs cloud-map-mcs-controller-manager-5b9f959fc9-v72s4 -c manager --namespace cloud-map-mcs-system
+$ kubectl logs cloud-map-mcs-controller-manager-5b9f959fc9-v72s4 -c manager --namespace cloud-map-mcs-system
 {"level":"info","ts":1641898834.16522,"logger":"controllers.Cloudmap","msg":"created ServiceImport","namespace":"demo","name":"nginx-hello"}
 {"level":"error","ts":1641898834.1654398,"logger":"controllers.Cloudmap","msg":"error when syncing service","namespace":"demo","name":"nginx-hello","error":"ServiceImport.multicluster.x-k8s.io \"nginx-hello\" not found","stacktrace":"github.com/go-logr/zapr.(*zapLogger).Error\n\t/go/pkg/mod/github.com/go-logr/zapr@v0.2.0/zapr.go:132\ngithub.com/aws/aws-cloud-map-mcs-controller-for-k8s/pkg/common.logger.Error\n\t/workspace/pkg/common/logger.go:39\ngithub.com/aws/aws-cloud-map-mcs-controller-for-k8s/pkg/controllers.(*CloudMapReconciler).reconcileNamespace\n\t/workspace/pkg/controllers/cloudmap_controller.go:98\ngithub.com/aws/aws-cloud-map-mcs-controller-for-k8s/pkg/controllers.(*CloudMapReconciler).Reconcile\n\t/workspace/pkg/controllers/cloudmap_controller.go:63\ngithub.com/aws/aws-cloud-map-mcs-controller-for-k8s/pkg/controllers.(*CloudMapReconciler).Start\n\t/workspace/pkg/controllers/cloudmap_controller.go:41\nsigs.k8s.io/controller-runtime/pkg/manager.(*controllerManager).startRunnable.func1\n\t/go/pkg/mod/sigs.k8s.io/controller-runtime@v0.8.3/pkg/manager/internal.go:681"}
 {"level":"info","ts":1641898836.19138,"logger":"controllers.Cloudmap","msg":"created derived Service","namespace":"demo","name":"imported-lia6jf8qe0"}
@@ -511,7 +511,7 @@ Note that the Pod resolves the address of the `ServiceImport` object on Cluster 
 
 Finally, generate HTTP requests from the `client-hello` Pod to the `nginx-hello` `ServiceImport` Service:
 
-```
+```bash
 / # curl nginx-hello.demo.svc.clusterset.local
 Server address: 10.10.28.116:80
 Server name: nginx-demo-59c6cb8d7b-t7q88
