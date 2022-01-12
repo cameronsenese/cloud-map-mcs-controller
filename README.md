@@ -538,8 +538,8 @@ Note that the responding Server Names and Server addresses are those of the `ngi
 
 ## Conclusion
 
-The proliferation of container adoption presents new challenges in managing workloads that have broken through the perimeter of the single cluster construct.
+The proliferation of container adoption is presenting new challenges in supporting workloads that have broken through the perimeter of the single cluster construct.
 
 For teams that are looking to implement a Kubenetes-centric approach to managing multi-cluster workloads, the mcs-api is an effective approach to extending the scope of the service resource concept beyond the cluster boundary - providing a mechanism to weave multiple clusters together using standard (and familiar) DNS based service discovery.
 
-The [AWS Cloud Map MCS Controller for Kubernetes](https://github.com/aws/aws-cloud-map-mcs-controller-for-k8s) is an open source project that integrates with AWS Cloud Map to offer a decentralised implementation of the multi-cluster services API specification that's particularly suited for teams looking for a lightweight and effective mechanism to deploy multi-cluster workloads to the AWS cloud.
+The [AWS Cloud Map MCS Controller for Kubernetes](https://github.com/aws/aws-cloud-map-mcs-controller-for-k8s) is an open source project that integrates with AWS Cloud Map to offer a decentralised implementation of the multi-cluster services API specification that's particularly suited for teams looking for a lightweight and effective mechanism to deploy multi-cluster Kubernetes workloads to the AWS cloud.
