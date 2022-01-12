@@ -1,14 +1,22 @@
 # Kubernetes Multi-cluster Service Discovery using the AWS Cloud Map MCS Controller
 
+> *This repository provides an overview of the Kubernetes Multi-Cluster Service API, and the AWS open source implementation of the mcs-api specification - the [AWS Cloud Map MCS Controller for K8s](https://github.com/aws/aws-cloud-map-mcs-controller-for-k8s). This repository also provides a detailed work instruction and associated artefacts required for the end-end implementation of the AWS Cloud Map MCS Controller across multiple EKS clusters in support of seamless, multi-cluster workload deployments.* 
+
 ## Introduction
 
-Kubernetes, with it's implementation of the cluster construct has simplified the ability to schedule workloads across a collection of VMs or nodes. Declarative configuration, immutability, auto-scaling, and self healing have vastly simplified the paradigm of workload management within the cluster - which has enabled teams to move at ever increasing velocities. 
+Kubernetes, with it's implementation of the cluster construct has simplified the ability to schedule workloads across a collection of VMs or nodes. Declarative configuration, immutability, auto-scaling, and self healing have vastly simplified the paradigm of workload management within the cluster - which has enabled teams to move at increasing velocities. 
 
-As the rate of Kubernetes adoption continues to increase within organisations, we're observing a corresponding increase in the number of use cases that require workloads to break through the perimeter of the single cluster construct. Requirements concerning workload location/proximity, isolation, and reliability have been the primary catalyst for the emergence of deployment scenarios where a single logical workload will span multiple Kubernetes clusters:
+As the rate of Kubernetes adoption continues to increase, there has been a corresponding increase in the number of use cases that require workloads to break through the perimeter of the single cluster construct. Requirements concerning workload location/proximity, isolation, and reliability have been the primary catalyst for the emergence of deployment scenarios where a single logical workload will span multiple Kubernetes clusters:
 
 - **Location** based concerns include network latency requirements (e.g. bringing the application as close to users as possible), data gravity requirements (e.g. bringing elements of the application as close to fixed data sources as possible), and jurisdiction based requirements (e.g. data residency limitations imposed via governing bodies);
 - **Isolation** based concerns include performance (e.g. reduction in "noisy-neighbor" in mixed workload clusters), environmental (e.g. by staged or sandboxed workload constructs such as "dev", "test", and "prod" environments), security (e.g. separating untrusted code or sensitive data), organisational (e.g. teams fall under different business units or management domains), and cost based (e.g. teams are subject to separate budgetary constraints);
 - **Reliability** based concerns include blast radius and infrastructure diversity (e.g. preventing an application based or underlying infrastructure issue in one cluster or provider zone from impacting the entire solution), and scale based (e.g. the workload may outgrow a single cluster)
+  
+  
+
+![alt text](images/deployment-scenario-v0.01.png "Deployment Scenario")
+
+
 
 Multi-cluster application architectures tend to be designed to either be **replicated** in nature - with this pattern each participating cluster runs a full copy of each given application; or alternatively they implement more of a **group-by-service** pattern where the services of a single application or system are split or divided amongst multiple clusters.
 
@@ -24,18 +32,18 @@ When it comes to the configuration of Kubernetes (and the surrounding infrastruc
 
 Kubernetes' familiar [Service](https://cloud.google.com/kubernetes-engine/docs/concepts/service) object lets you discover and access services within the boundary of a single Kubernetes cluster. The mcs-api implements a Kubernetes-native extension to the Service API, extending the scope of the service resource concept beyond the cluster boundary - providing a mechanism to stitch your multiple clusters together using standard (and familiar) DNS based service discovery.
 
-> [KEP-1645: Multi-Cluster Services API](https://github.com/kubernetes/enhancements/tree/master/keps/sig-multicluster/1645-multi-cluster-services-api#kep-1645-multi-cluster-services-api) provides the formal description of the Multi Cluster Service API. KEP-1645 doesn't define a complete implementation - it serves to define how an implementation should behave.At the time of writing the mcs-api version is: `multicluster.k8s.io/v1alpha1`
+> *[KEP-1645: Multi-Cluster Services API](https://github.com/kubernetes/enhancements/tree/master/keps/sig-multicluster/1645-multi-cluster-services-api#kep-1645-multi-cluster-services-api) provides the formal description of the Multi Cluster Service API. KEP-1645 doesn't define a complete implementation - it serves to define how an implementation should behave.At the time of writing the mcs-api version is: `multicluster.k8s.io/v1alpha1`*
 
 The primary deployment scenarios covered by the mcs-api include:
 
 - **Different services each deployed to separate clusters:** I have 2 clusters, each running different services managed by different teams, where services from one team depend on services from the other team. I want to ensure that a service from one team can discover a service from the other team (via DNS resolving to VIP), regardless of the cluster that they reside in. In addition, I want to make sure that if the dependent service is migrated to another cluster, the dependee is not impacted.
 - **Single service deployed to multiple clusters:** I have deployed my stateless service to multiple clusters for redundancy or scale. Now I want to propagate topologically-aware service endpoints (local, regional, global) to all clusters, so that other services in my clusters can access instances of this service in priority order based on availability and locality.
 
-The mcs-api is able to support these use cases through the described properties of a "clusterset", which is a group of clusters with a high degree of mutual trust and shared ownership that share services amongst themselves - along with two additional API objects: the `serviceexport` and the `serviceimport`.
+The mcs-api is able to support these use cases through the described properties of a "ClusterSet", which is a group of clusters with a high degree of mutual trust and shared ownership that share services amongst themselves - along with two additional API objects: the `ServiceExport` and the `ServiceImport`.
 
-Services are not visible to other clusters in the clusterset by default, they must be explicitly marked for export by the user. Creating a `serviceexport` object for a given service specifies that the service should be exposed across all clusters in the clusterset. The mcs-api implementation (typically a controller) will automatically generate a corresponding `serviceimport` object (which serves as the in-cluster representation of a multi-cluster service) in each importing cluster for consumer workloads to be able to locate and consume the exported service.
+Services are not visible to other clusters in the ClusterSet by default, they must be explicitly marked for export by the user. Creating a `ServiceExport` object for a given service specifies that the service should be exposed across all clusters in the ClusterSet. The mcs-api implementation (typically a controller) will automatically generate a corresponding `ServiceImport` object (which serves as the in-cluster representation of a multi-cluster service) in each importing cluster - for consumer workloads to be able to locate and consume the exported service.
 
-DNS-based service discovery for `serviceimport` objects is facilitated by the [Kubernetes DNS-Based Multicluster Service Discovery Specification](https://github.com/kubernetes/enhancements/pull/2577) which extends the standard Kubernetes DNS paradigms by implementing records named by service and namespace for `serviceimport` objects, but as differentiated from regular in-cluster DNS service names by using the special zone `.cluster***\*set\****.local`. i.e. When a `serviceexport` is created, this will cause a FQDN for the multi-cluster service to become available from within the clusterset. The domain name will be `<service>.<ns>.svc.clusterset.local`.
+DNS-based service discovery for `ServiceImport` objects is facilitated by the [Kubernetes DNS-Based Multicluster Service Discovery Specification](https://github.com/kubernetes/enhancements/pull/2577) which extends the standard Kubernetes DNS paradigms by implementing records named by service and namespace for `serviceimport` objects, but as differentiated from regular in-cluster DNS service names by using the special zone `.clusterset.local`. I.e. When a `ServiceExport` is created, this will cause a FQDN for the multi-cluster service to become available from within the ClusterSet. The domain name will be of the format `<service>.<ns>.svc.clusterset.local`.
 
 #### AWS Cloud Map MCS Controller for Kubernetes
 
@@ -45,7 +53,7 @@ The CMCK is a controller that syncs services across clusters and makes them avai
 
 #### AWS Cloud Map
 
-AWS Cloud Map is a cloud resource discovery service that Cloud Map allows applications to discover web-based services via AWS SDK, API calls, or DNS queries. Cloud Map is a fully managed service which eliminates the need to set up, update, and manage your own service discovery tools and software.
+[AWS Cloud Map](https://aws.amazon.com/cloud-map) is a cloud resource discovery service that Cloud Map allows applications to discover web-based services via AWS SDK, API calls, or DNS queries. Cloud Map is a fully managed service which eliminates the need to set up, update, and manage your own service discovery tools and software.
 
 
 
@@ -55,9 +63,9 @@ AWS Cloud Map is a cloud resource discovery service that Cloud Map allows applic
 
 Let's consider a deployment scenario where we provision a Service into a single EKS cluster, then make the service available from within a second EKS cluster using the AWS Cloud Map MCS Controller.
 
-> This tutorial will take you through the end-end implementation of the solution as outlined herein, including a functional implementation of the AWS Cloud Map MCS Controller across x2 EKS clusters situated in separate VPCs.
+> *This tutorial will take you through the end-end implementation of the solution as outlined herein, including a functional implementation of the AWS Cloud Map MCS Controller across x2 EKS clusters situated in separate VPCs.*
 
-
+#### Solution Baseline
 
 ![alt text](images/solution-baseline-v0.01.png "Solution Baseline")
 
@@ -74,10 +82,12 @@ In reference to the **Solution Baseline** diagram:
 - Clusters cls1 & cls2 are both configured as members of the same mcs-api clusterset.
 - Clusters cls1 & cls2 are both provisioned with the namespace `demo`.
 - Cluster cls1 has a `ClusterIP` Service `nginx-hello` deployed to the `demo` namespace which frontends a x3 replica Nginx deployment `nginx-demo`.
-  - Service | nginx-hello: 172.20.58.137:80
+  - Service | nginx-hello: 172.20.150.33:80
   - Endpoints | nginx-hello: 10.10.11.140:80,10.10.16.197:80,10.10.22.87:80
 
-With the required dependencies in place, the admin user is able to create a `serviceexport` object in cls1 for the `nginx-hello` Service, such that the MCS-Controller implementation will automatically provision a corresponding `serviceimport` in cls2 for consumer workloads to be able to locate and consume the exported service.
+#### Service Provisioning
+
+With the required dependencies in place, the admin user is able to create a `ServiceExport` object in cls1 for the `nginx-hello` Service, such that the MCS-Controller implementation will automatically provision a corresponding `ServiceImport` in cls2 for consumer workloads to be able to locate and consume the exported service.
 
 
 
@@ -85,26 +95,25 @@ With the required dependencies in place, the admin user is able to create a `ser
 
 In reference to the **Service Provisioning** diagram:
 
-1. The administrator submits the request to the cls1 Kube API server for a `serviceexport` object to be created for ClusterIP Service `nginx-hello` in the `demo` Namespace.
-2. The MCS-Controller in cls1, watching for `serviceexport` object creation provisions a corresponding `nginx-hello` service in the Cloud Map `demo` namespace. The Cloud Map service is provisioned with sufficient detail for the Service object and corresponding Endpoint Slice to be provisioned within additional clusters in the ClusterSet.
-3. The MCS-Controller in cls2 responds to the creation of the `nginx-hello` Cloud Map Service by provisioning the `serviceimport` object and corresponding Endpoint Slice objects via the Kube API Server.
-4. The CoreDNS multicluster plugin, watching for `serviceimport` and `endpointslice` creation provisions corresponding DNS records within the `.clusterset.local` zone.
-   
-   
+1. The administrator submits the request to the cls1 Kube API server for a `ServiceExport` object to be created for ClusterIP Service `nginx-hello` in the `demo` Namespace.
+2. The MCS-Controller in cls1, watching for `ServiceExport` object creation provisions a corresponding `nginx-hello` service in the Cloud Map `demo` namespace. The Cloud Map service is provisioned with sufficient detail for the Service object and corresponding Endpoint Slice to be provisioned within additional clusters in the ClusterSet.
+3. The MCS-Controller in cls2 responds to the creation of the `nginx-hello` Cloud Map Service by provisioning the `ServiceImport` object and corresponding `EndpointSlice` objects via the Kube API Server.
+4. The CoreDNS multicluster plugin, watching for `ServiceImport` and `EndpointSlice` creation provisions corresponding DNS records within the `.clusterset.local` zone.
+
+#### Service Consumption
 
 ![alt text](images/service-consumption-v0.01.png "Service Consumption")
 
 In reference to the **Service Consumption** diagram:
 
-1. The `client-hello` pod in cls2 needs to consume the `nginx-hello` service, which has endpoints deployed in cls1. The `client-hello` pod requests the resource http://nginx-hello.demo.svc.clusterset.local:80. DNS based service discovery [1b] responds with the IP address of the local `nginx-hello` ClusterSetIP Service.
+1. The `client-hello` pod in Cluster 2 needs to consume the `nginx-hello` service, for which all Endpoints are deployed in Cluster 1. The `client-hello` pod requests the resource http://nginx-hello.demo.svc.clusterset.local:80. DNS based service discovery [1b] responds with the IP address of the local `nginx-hello` `ServiceExport` Service `ClusterSetIP`.
+2. Requests to the local `ClusterSetIP` at `nginx-hello.demo.svc.clusterset.local` are proxied to the Endpoints located on Cluster 1.
 
-   The `client-hello` pod uses DNS based service discovery [1b] to locate the `nginx-hello` ClusterSetIP Service when requesting the resource `http://nginx-hello.demo.svc.clusterset.local:80`. CoreDNS responds with the local IP address assigned to the `nginx-hello` ClusterSetIP Service.
+Note: In accordance with the mcs-api specification, a multi-cluster service will be imported by all clusters in which the service's namespace exists, meaning that each exporting cluster will also import the corresponding multi-cluster service. As such, the `nginx-hello` service will also be accessible via `ServiceExport` Service `ClusterSetIP` on Cluster 1. Identical to Cluster 2, the `ServiceExport` Service is resolvable by name at `nginx-hello.demo.svc.clusterset.local`.
 
-2. Requests to the local ClusterSetIP Service at `nginx-hello.demo.svc.clusterset.local` are proxied to the Endpoints located on cls1.
+### Implementation
 
-Note: In accordance with the mcs-api specification, a multi-cluster service will be imported by all clusters in which the service's namespace exists, meaning that each exporting cluster will also import the corresponding multi-cluster service. As such the `nginx-hello` service will also be accessible via ClusterSetIP Service on cls1 at `nginx-hello.demo.svc.clusterset.local`.
-
-### Solution Baseline Implementation
+### Solution Baseline 
 
 To prepare your environment to match the Solution Baseline deployment scenario, the following prerequisites should be addressed.
 
@@ -112,52 +121,50 @@ To prepare your environment to match the Solution Baseline deployment scenario, 
 
 Sample configuration files will be used through the course of the tutorial, which have been made available in the `cloud-map-mcs-controller` repository.
 
-Clone the repository to the host on which you will be bootstrapping the cluster:
+Clone the repository to the host on which you will be bootstrapping the clusters:
 
 ```bash
 https://gitlab.com/byteQualia/cloud-map-mcs-controller.git
 ```
 
-> Note: Certain values located within the provided configuration files have been configured for substitution with OS environment variables. Work instructions below will identify which environment variables should be set before issuing any commands which will depend on variable substitution.
+> *Note: Certain values located within the provided configuration files have been configured for substitution with OS environment variables. Work instructions below will identify which environment variables should be set before issuing any commands which will depend on variable substitution.*
 
-> Note: All commands should be run from the root directory of the cloned git repository.
+> *Note: All commands as provided should be run from the root directory of the cloned git repository.*
 
 #### Create EKS Clusters
 
 x2 EKS clusters should be provisioned, each deployed into separate VPCs within a single AWS region.
 
 - VPCs and clusters should be provisioned with non-overlapping CIDRs.
-- For compatibility with the remainder of the tutorial, it is recommended that `eksctl` be used to provision the clusters and associated security configuration. *By default, `eksctl create cluster` will create a dedicated VPC.*
+- For compatibility with the remainder of the tutorial, it is recommended that `eksctl` be used to provision the clusters and associated security configuration. *By default, the `eksctl create cluster` command will create a dedicated VPC.*
 
-Sample config file `eksctl-cluster.yaml` has been provided in the `config` directory within the `cloud-map-mcs-controller` repository.
+Sample `eksctl` config file `/config/eksctl-cluster.yaml` has been provided:
 
 - Environment variables AWS_REGION, CLUSTER_NAME, NODEGROUP_NAME, and VPC_CIDR should be configured. Example values have been provided in the below command reference - substitute values to suit your preference.
-- Example VPC and Kubernetes service IPv4 CIDRs match the values provided in the Baseline Configuration description.
+- Example VPC CIDRs match the values provided in the Baseline Configuration description.
 
 Run the following commands to create clusters using `eksctl`. 
 
 Cluster 1:
 
 ```bash
+cd config
 export AWS_REGION=ap-southeast-2
 export CLUSTER_NAME=cls1
 export NODEGROUP_NAME=cls1-nodegroup1
 export VPC_CIDR=10.10.0.0/16
-cd config
 envsubst < eksctl-cluster.yaml | eksctl create cluster -f -
-cd ..
 ```
 
 Cluster 2:
 
 ```bash
+cd config
 export AWS_REGION=ap-southeast-2
 export CLUSTER_NAME=cls2
 export NODEGROUP_NAME=cls2-nodegroup1
 export VPC_CIDR=10.12.0.0/16
-cd config
 envsubst < eksctl-cluster.yaml | eksctl create cluster -f -
-cd ..
 ```
 
 #### Create VPC Peering Connection
@@ -165,11 +172,11 @@ cd ..
 VPC peering is required to permit network connectivity between workloads provisioned within each cluster.
 
 - To create the VPC Peering connection, follow the instruction [Create a VPC peering connection with another VPC in your account](https://docs.aws.amazon.com/vpc/latest/peering/create-vpc-peering-connection.html) for guidance.
-- VPC route tables in each VPC require updating, follow the instruction [Update your route tables for a VPC peering connection](https://docs.aws.amazon.com/vpc/latest/peering/vpc-peering-routing.html) for guidance. For simplicity, it's recommended to configure destinations as IPv4 CIDR block of the peer VPC.
+- VPC route tables in each VPC require updating, follow the instruction [Update your route tables for a VPC peering connection](https://docs.aws.amazon.com/vpc/latest/peering/vpc-peering-routing.html) for guidance. For simplicity, it's recommended to configure route destinations as the IPv4 CIDR block of the peer VPC.
 
 - Security Groups require updating to permit cross-cluster network communication. EKS cluster security groups in each cluster should be updated to permit inbound traffic originating from external clusters. For simplicity, it's recommended the Cluster 1 & Cluster 2 [EKS Cluster Security groups](https://docs.aws.amazon.com/eks/latest/userguide/sec-group-reqs.html) be updated to allow inbound traffic from the IPv4 CIDR block of the peer VPC.
 
-> The [VPC Reachability Analyzer](https://docs.aws.amazon.com/vpc/latest/reachability/getting-started.html) can be used to test and diagnose end-end connectivity between worker nodes within each cluster.
+> *The [VPC Reachability Analyzer](https://docs.aws.amazon.com/vpc/latest/reachability/getting-started.html) can be used to test and diagnose end-end connectivity between worker nodes within each cluster.*
 
 #### Enable EKS OIDC Provider
 
@@ -207,7 +214,7 @@ The CoreDNS multicluster plugin implements the [Kubernetes DNS-Based Multicluste
 
 ##### Update CoreDNS RBAC
 
-Run the following command against both clusters to update the `system:coredns` clusterrole to include access to additional API resources:
+Run the following command against both clusters to update the `system:coredns` clusterrole to include access to additional multi-cluster API resources:
 
 ```bash
 kubectl apply -f \config\coredns-clusterrole.yaml
@@ -239,7 +246,7 @@ Before the Cloud Map MCS-Controller is installed, we will first pre-provision th
 
 Run the following commands to create the MCS-Controller namespace and service accounts in each cluster.
 
-> Note: Be sure to change the `kubectl` context to the correct cluster before issuing commands.
+> *Note: Be sure to change the `kubectl` context to the correct cluster before issuing commands.*
 
 Cluster 1:
 
@@ -277,17 +284,16 @@ Run the following command against both clusters to install the MCS-Controller la
 
 ```bash
 export AWS_REGION=ap-southeast-2
-kubectl apply -k "github.com/aws/aws-cloud-map-mcs-controller-for-k8s/config/controller_install_release"
 kubectl apply -k "github.com/aws/aws-cloud-map-mcs-controller-for-k8s/config/controller_install_latest"
 ```
 
 #### Create `nginx-hello` Service
 
-Now that the clusters, CoreDNS and the MCS-Controller have been configured, we can create the `demo` namespace in both clusters, and implement the `nginx-hello` Service and associated Deployment into Cluster 1.
+Now that the clusters, CoreDNS and the MCS-Controller have been configured, we can create the `demo` namespace in both clusters and implement the `nginx-hello` Service and associated Deployment into Cluster 1.
 
 Run the following commands to prepare the demo environment on both clusters.
 
-> Note: be sure to change the `kubectl` context to the correct cluster before issuing commands.
+> *Note: be sure to change the `kubectl` context to the correct cluster before issuing commands.*
 
 Cluster 1:
 
@@ -305,11 +311,11 @@ kubectl create namespace demo
 
 ### Service Provisioning
 
-With the Solution Baseline in place, let's continue by implementing the Service Provisioning scenario. We'll create a `ServiceExport` object in Cluster 1 for the `nginx-hello` Service. This will trigger the Cluster 1 MCS-Controller service provisioning and propagation into Cloud Map, and subsequent import and provisioning by the MCS-Controller in Cluster 2.
+With the Solution Baseline in place, let's continue by implementing the Service Provisioning scenario. We'll create a `ServiceExport` object in Cluster 1 for the `nginx-hello` Service. This will trigger the Cluster 1 MCS-Controller to complete service provisioning and propagation into Cloud Map, and subsequent import and provisioning by the MCS-Controller in Cluster 2.
 
 #### Create `nginx-hello` ServiceExport
 
-Run the following command against Cluster 1 to to create the `serviceexport` object for the `nginx-hello` Service:
+Run the following command against Cluster 1 to to create the `ServiceExport` object for the `nginx-hello` Service:
 
 ```bash
 kubectl apply -f \config\nginx-serviceexport.yaml
@@ -317,23 +323,23 @@ kubectl apply -f \config\nginx-serviceexport.yaml
 
 #### Verify `nginx-hello` ServiceExport
 
-Let's verify the `serviceexport` creation has succeeded, and that corresponding objects have been created in Cluster 1, Cloud Map, and Cluster 2. 
+Let's verify the `ServiceExport` creation has succeeded, and that corresponding objects have been created in Cluster 1, Cloud Map, and Cluster 2. 
 
 ##### Cluster 1
 
 Inspecting the MCS-Controller logs in Cluster 1, we see that the controller has detected the `ServiceExport` object, and created the corresponding `demo` Namespace and `nginx-hello` Service in Cloud Map: 
 
 ```json
-kubectl logs cloud-map-mcs-controller-manager-5b9f959fc9-hmz88 -c manager --namespace cloud-map-mcs-system
+$ kubectl logs cloud-map-mcs-controller-manager-5b9f959fc9-hmz88 -c manager --namespace cloud-map-mcs-system
 {"level":"info","ts":1641898137.1080713,"logger":"controllers.ServiceExport","msg":"updating Cloud Map service","namespace":"demo","name":"nginx-hello"}
 {"level":"info","ts":1641898137.1081324,"logger":"cloudmap","msg":"fetching a service","namespace":"demo","name":"nginx-hello"}
 {"level":"info","ts":1641898137.1082,"logger":"cloudmap","msg":"registering endpoints","namespaceName":"demo","serviceName":"nginx-hello","endpoints":[{"Id":"tcp-10_10_28_116-80","IP":"10.10.28.116","EndpointPort":{"Name":"","Port":80,"TargetPort":"","Protocol":"TCP"},"ServicePort":{"Name":"","Port":80,"TargetPort":"80","Protocol":"TCP"},"Attributes":{"K8S_CONTROLLER":"aws-cloud-map-mcs-controller-for-k8s 97072a6 (97072a6)"}},{"Id":"tcp-10_10_21_133-80","IP":"10.10.21.133","EndpointPort":{"Name":"","Port":80,"TargetPort":"","Protocol":"TCP"},"ServicePort":{"Name":"","Port":80,"TargetPort":"80","Protocol":"TCP"},"Attributes":{"K8S_CONTROLLER":"aws-cloud-map-mcs-controller-for-k8s 97072a6 (97072a6)"}},{"Id":"tcp-10_10_16_120-80","IP":"10.10.16.120","EndpointPort":{"Name":"","Port":80,"TargetPort":"","Protocol":"TCP"},"ServicePort":{"Name":"","Port":80,"TargetPort":"80","Protocol":"TCP"},"Attributes":{"K8S_CONTROLLER":"aws-cloud-map-mcs-controller-for-k8s 97072a6 (97072a6)"}}]}
 ```
 
- Using the AWS CLI we can verify Namespace and Service resources provisioned to Cloud Map by the MCS-Controller in Cluster 1:
+ Using the AWS CLI we can verify Namespace and Service resources provisioned to Cloud Map by the Cluster 1 MCS-Controller:
 
 ```yaml
-aws servicediscovery list-namespaces 
+$ aws servicediscovery list-namespaces
 {
     "Namespaces": [
         {
@@ -353,7 +359,8 @@ aws servicediscovery list-namespaces
         }
     ]
 }
-aws servicediscovery list-services
+
+$ aws servicediscovery list-services
 {
     "Services": [
         {
@@ -366,7 +373,7 @@ aws servicediscovery list-services
         }
     ]
 }
-aws servicediscovery discover-instances --namespace-name demo --service-name nginx-hello
+$ aws servicediscovery discover-instances --namespace-name demo --service-name nginx-hello
 {
     "Instances": [
         {
@@ -426,7 +433,7 @@ aws servicediscovery discover-instances --namespace-name demo --service-name ngi
 
 ##### Cluster 2
 
-Inspecting the MCS-Controller logs in Cluster 2, we see that the controller has detected the `nginx-hello` Cloud Map service, and created the corresponding `ServiceImport`:
+Inspecting the MCS-Controller logs in Cluster 2, we see that the controller has detected the `nginx-hello` Cloud Map Service, and created the corresponding Kubernetes `ServiceImport`:
 
 ```yaml
 kubectl logs cloud-map-mcs-controller-manager-5b9f959fc9-v72s4 -c manager --namespace cloud-map-mcs-system
@@ -436,10 +443,10 @@ kubectl logs cloud-map-mcs-controller-manager-5b9f959fc9-v72s4 -c manager --name
 {"level":"info","ts":1641898836.20201,"logger":"controllers.Cloudmap","msg":"updated ServiceImport","namespace":"demo","name":"nginx-hello","IP":["172.20.179.134"],"ports":[{"protocol":"TCP","port":80}]}
 ```
 
-Looking into the Cluster 2 Kubernetes `ServiceImport` object: 
+Inspecting the Cluster 2 Kubernetes `ServiceImport` object: 
 
-```yaml
-kubectl get serviceimports.multicluster.x-k8s.io nginx-hello -n demo -o yaml
+```bash
+$ kubectl get serviceimports.multicluster.x-k8s.io nginx-hello -n demo -o yaml
 apiVersion: multicluster.x-k8s.io/v1alpha1
 kind: ServiceImport
 metadata:
@@ -461,22 +468,22 @@ spec:
 status: {}
 ```
 
-And the Cluster 2 Kubernetes Endpoint Slice:
+And the corresponding Cluster 2 Kubernetes Endpoint Slice:
 
 ```bash
-kubectl get endpointslices.discovery.k8s.io -n demo
+$ kubectl get endpointslices.discovery.k8s.io -n demo
 NAME                        ADDRESSTYPE   PORTS   ENDPOINTS                                AGE
 imported-lia6jf8qe0-fxppx   IPv4          80      10.10.16.120,10.10.21.133,10.10.28.116   52m
 ```
 
 Important points to note:
 
-- the `ServiceImport` Service is assigned an IP address from the local Kubernetes service IPv4 CIDR: 172.22.0.0/16 (172.22.153.156) so as to permit service discovery and access to the remote service endpoints from within the local cluster.
-- the endpoint IP addresses match those of the `nginx-demo` Endpoints in Cluster 1 (i.e. from the cls1 VPC CIDR: 10.10.0.0/16).
+- the `ServiceImport` Service is assigned an IP address from the local Kubernetes service IPv4 CIDR: 172.22.0.0/16 (172.20.179.134) so as to permit service discovery and access to the remote service endpoints from within the local cluster.
+- the endpoint IP addresses match those of the `nginx-demo` Endpoints in Cluster 1 (from the Cluster 1 VPC CIDR: 10.10.0.0/16).
 
 ### Service Consumption
 
-With the Solution Baseline and Service Provisioning in place, workloads in Cluster 2 are now able to consume the `nginx-hello` Service Endpoints located in Cluster 1 via the locally provisioned `ServiceImport` object. To complete the Service Consumption deployment scenario we'll deploy the `client-hello` Pod into Cluster 2, and observe the cross-cluster service consumption of the `nginx-hello` service.
+With the Solution Baseline and Service Provisioning in place, workloads in Cluster 2 are now able to consume the `nginx-hello` Service Endpoints located in Cluster 1 via the locally provisioned `ServiceImport` object. To complete the Service Consumption deployment scenario we'll deploy the `client-hello` Pod into Cluster 2, and observe how it's able to perform cross-cluster service consumption of the `nginx-hello` service in Cluster 1.
 
 #### Create `client-hello` Pod
 
@@ -488,10 +495,10 @@ kubectl apply -f \config\client-hello.yaml
 
 #### Verify multi-cluster service consumption
 
-Next, exec into a shell in the `client-hello` pod and perform an nslookup for the ServiceImport service `nginx-hello.demo.svc.clusterset.local`:
+Let's exec into the `client-hello` Pod and perform an `nslookup` to CoreDNS for the `ServiceImport` Service `nginx-hello.demo.svc.clusterset.local`:
 
-```
-kubectl exec -it client-hello -n demo /bin/sh
+```bash
+$ kubectl exec -it client-hello -n demo /bin/sh
 / # nslookup nginx-hello.demo.svc.clusterset.local
 Server:         172.20.0.10
 Address:        172.20.0.10:53
@@ -502,7 +509,7 @@ Address: 172.20.179.134
 
 Note that the Pod resolves the address of the `ServiceImport` object on Cluster 2.
 
-Finally, generate HTTP requests to the `ServiceImport` Service:
+Finally, generate HTTP requests from the `client-hello` Pod to the `nginx-hello` `ServiceImport` Service:
 
 ```
 / # curl nginx-hello.demo.svc.clusterset.local
@@ -527,4 +534,4 @@ URI: /
 Request ID: cda0f25bcb40ade268bed2c9a9f75e91
 ```
 
-Note that the responding Server Names and Server addresses are those of the `nginx-demo` Pods on Cluster 1 - confirming that the requests to the local ClusterSetIP Service at `nginx-hello.demo.svc.clusterset.local` on Cluster 2 are proxied cross-cluster to the Endpoints located on Cluster 1!
+Note that the responding Server Names and Server addresses are those of the `nginx-demo` Pods on Cluster 1 - confirming that the requests to the local `ClusterSetIP` at `nginx-hello.demo.svc.clusterset.local` on Cluster 2 are proxied cross-cluster to the Endpoints located on Cluster 1!
