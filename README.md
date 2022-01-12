@@ -121,10 +121,10 @@ To prepare your environment to match the Solution Baseline deployment scenario, 
 
 Sample configuration files will be used through the course of the tutorial, which have been made available in the `cloud-map-mcs-controller` repository.
 
-Clone the repository to the host on which you will be bootstrapping the clusters:
+Clone the repository to the host from which you will be bootstrapping the clusters:
 
 ```bash
-https://gitlab.com/byteQualia/cloud-map-mcs-controller.git
+git clone https://gitlab.com/byteQualia/cloud-map-mcs-controller.git
 ```
 
 > *Note: Certain values located within the provided configuration files have been configured for substitution with OS environment variables. Work instructions below will identify which environment variables should be set before issuing any commands which will depend on variable substitution.*
