@@ -84,7 +84,7 @@ In reference to the **Solution Baseline** diagram:
 
 #### Service Provisioning
 
-With the required dependencies in place, the admin user is able to create a `ServiceExport` object in cls1 for the `nginx-hello` Service, such that the MCS-Controller implementation will automatically provision a corresponding `ServiceImport` in cls2 for consumer workloads to be able to locate and consume the exported service.
+With the required dependencies in place, the admin user is able to create a `ServiceExport` object in Cluster 1 for the `nginx-hello` Service, such that the MCS-Controller implementation will automatically provision a corresponding `ServiceImport` in Cluster 2 for consumer workloads to be able to locate and consume the exported service.
 
 
 ![alt text](images/service-provisioning-v0.01.png "Service Provisioning")
