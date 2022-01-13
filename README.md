@@ -14,7 +14,7 @@ As the rate of Kubernetes adoption continues to increase, there has been a corre
   
   
 
-![alt text](images/deployment-scenario-v0.01.png "Deployment Scenario")
+![alt text](images/solution-overview-v0.01.png "Solution Overview")
 
 
 
