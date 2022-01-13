@@ -51,9 +51,7 @@ The [AWS Cloud Map MCS Controller for Kubernetes](https://github.com/aws/aws-clo
 
 The MCS-Controller is a controller that syncs services across clusters and makes them available for multi-cluster service discovery and connectivity. The implementation model is decentralsised, and utilises AWS Cloud Map as registry for management and distribution of multi-cluster service data.
 
-At the time of writing, the MCS-Controller release version is [v0.2.2](https://github.com/aws/aws-cloud-map-mcs-controller-for-k8s/releases/tag/v0.2.2).
-
-Milestones are in place to bring the project up to [v1.0 (GA)](https://github.com/aws/aws-cloud-map-mcs-controller-for-k8s/milestones), which will include achieving full compliance with the mcs-api specification, support for headless services, and Cloud Map client-side traffic shaping.
+At the time of writing, the MCS-Controller release version is [v0.2.2](https://github.com/aws/aws-cloud-map-mcs-controller-for-k8s/releases/tag/v0.2.2). Milestones are currently in place to bring the project up to [v1.0 (GA)](https://github.com/aws/aws-cloud-map-mcs-controller-for-k8s/milestones) during the 2nd half of CY2022, which will include full compliance with the mcs-api specification, support for headless services, and Cloud Map client-side traffic shaping.
 
 #### AWS Cloud Map
 
