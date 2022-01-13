@@ -129,9 +129,9 @@ Clone the repository to the host from which you will be bootstrapping the cluste
 git clone https://gitlab.com/byteQualia/cloud-map-mcs-controller.git
 ```
 
-> *Note: Certain values located within the provided configuration files have been configured for substitution with OS environment variables. Work instructions below will identify which environment variables should be set before issuing any commands which will depend on variable substitution.*
-
 > *Note: All commands as provided should be run from the root directory of the cloned git repository.*
+
+> *Note: Certain values located within the provided configuration files have been configured for substitution with OS environment variables. Work instructions below will identify which environment variables should be set before issuing any commands which will depend on variable substitution.*
 
 #### Create EKS Clusters
 
@@ -481,11 +481,11 @@ imported-lia6jf8qe0-fxppx   IPv4          80      10.10.16.120,10.10.21.133,10.1
 Important points to note:
 
 - the `ServiceImport` Service is assigned an IP address from the local Kubernetes service IPv4 CIDR: 172.22.0.0/16 (172.20.179.134) so as to permit service discovery and access to the remote service endpoints from within the local cluster.
-- the endpoint IP addresses match those of the `nginx-demo` Endpoints in Cluster 1 (from the Cluster 1 VPC CIDR: 10.10.0.0/16).
+- the endpoint IP addresses match those of the `nginx-demo` Endpoints in Cluster 1 (i.e. from the Cluster 1 VPC CIDR: 10.10.0.0/16).
 
 ### Service Consumption
 
-With the Solution Baseline and Service Provisioning in place, workloads in Cluster 2 are now able to consume the `nginx-hello` Service Endpoints located in Cluster 1 via the locally provisioned `ServiceImport` object. To complete the Service Consumption deployment scenario we'll deploy the `client-hello` Pod into Cluster 2, and observe how it's able to perform cross-cluster service consumption of the `nginx-hello` service in Cluster 1.
+With the Solution Baseline and Service Provisioning in place, workloads in Cluster 2 are now able to consume the `nginx-hello` Service Endpoints located in Cluster 1 via the locally provisioned `ServiceImport` object. To complete the Service Consumption deployment scenario we'll deploy the `client-hello` Pod into Cluster 2, and observe how it's able to perform cross-cluster service consumption of the `nginx-hello` Service Endpoints in Cluster 1.
 
 #### Create `client-hello` Pod
 
@@ -497,7 +497,7 @@ kubectl apply -f \config\client-hello.yaml
 
 #### Verify multi-cluster service consumption
 
-Let's exec into the `client-hello` Pod and perform an `nslookup` to CoreDNS for the `ServiceImport` Service `nginx-hello.demo.svc.clusterset.local`:
+Let's exec into the `client-hello` Pod and perform an `nslookup` to cluster-local CoreDNS for the `ServiceImport` Service `nginx-hello.demo.svc.clusterset.local`:
 
 ```bash
 $ kubectl exec -it client-hello -n demo /bin/sh
@@ -511,7 +511,7 @@ Address: 172.20.179.134
 
 Note that the Pod resolves the address of the `ServiceImport` object on Cluster 2.
 
-Finally, generate HTTP requests from the `client-hello` Pod to the `nginx-hello` `ServiceImport` Service:
+Finally, we generate HTTP requests from the `client-hello` Pod to the local `nginx-hello` `ServiceImport` Service:
 
 ```bash
 / # curl nginx-hello.demo.svc.clusterset.local
