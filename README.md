@@ -247,13 +247,29 @@ Run the following commands to create the MCS-Controller namespace and service ac
 Cluster 1:
 
 ```bash
-export CLUSTER_NAME=cls1kubectl create namespace cloud-map-mcs-systemeksctl create iamserviceaccount \--cluster $CLUSTER_NAME \--namespace cloud-map-mcs-system \--name cloud-map-mcs-controller-manager \--attach-policy-arn arn:aws:iam::aws:policy/AWSCloudMapFullAccess \--override-existing-serviceaccounts \--approve
+export CLUSTER_NAME=cls1
+kubectl create namespace cloud-map-mcs-system
+eksctl create iamserviceaccount \
+--cluster $CLUSTER_NAME \
+--namespace cloud-map-mcs-system \
+--name cloud-map-mcs-controller-manager \
+--attach-policy-arn arn:aws:iam::aws:policy/AWSCloudMapFullAccess \
+--override-existing-serviceaccounts \
+--approve
 ```
 
 Cluster 2:
 
 ```bash
-export CLUSTER_NAME=cls2kubectl create namespace cloud-map-mcs-systemeksctl create iamserviceaccount \--cluster $CLUSTER_NAME \--namespace cloud-map-mcs-system \--name cloud-map-mcs-controller-manager \--attach-policy-arn arn:aws:iam::aws:policy/AWSCloudMapFullAccess \--override-existing-serviceaccounts \--approve
+export CLUSTER_NAME=cls2
+kubectl create namespace cloud-map-mcs-system
+eksctl create iamserviceaccount \
+--cluster $CLUSTER_NAME \
+--namespace cloud-map-mcs-system \
+--name cloud-map-mcs-controller-manager \
+--attach-policy-arn arn:aws:iam::aws:policy/AWSCloudMapFullAccess \
+--override-existing-serviceaccounts \
+--approve
 ```
 
 ##### Install the MCS-Controller
@@ -277,7 +293,9 @@ Run the following commands to prepare the demo environment on both clusters.
 Cluster 1:
 
 ```bash
-kubectl create namespace demokubectl apply -f \config\nginx-deployment.yamlkubectl apply -f \config\nginx-service.yaml
+kubectl create namespace demo
+kubectl apply -f \config\nginx-deployment.yaml
+kubectl apply -f \config\nginx-service.yaml
 ```
 
 Cluster 2:
@@ -307,13 +325,105 @@ Let's verify the `ServiceExport` creation has succeeded, and that corresponding 
 Inspecting the MCS-Controller logs in Cluster 1, we see that the controller has detected the `ServiceExport` object, and created the corresponding `demo` Namespace and `nginx-hello` Service in Cloud Map: 
 
 ```bash
-$ kubectl logs cloud-map-mcs-controller-manager-5b9f959fc9-hmz88 -c manager --namespace cloud-map-mcs-system{"level":"info","ts":1641898137.1080713,"logger":"controllers.ServiceExport","msg":"updating Cloud Map service","namespace":"demo","name":"nginx-hello"}{"level":"info","ts":1641898137.1081324,"logger":"cloudmap","msg":"fetching a service","namespace":"demo","name":"nginx-hello"}{"level":"info","ts":1641898137.1082,"logger":"cloudmap","msg":"registering endpoints","namespaceName":"demo","serviceName":"nginx-hello","endpoints":[{"Id":"tcp-10_10_28_116-80","IP":"10.10.28.116","EndpointPort":{"Name":"","Port":80,"TargetPort":"","Protocol":"TCP"},"ServicePort":{"Name":"","Port":80,"TargetPort":"80","Protocol":"TCP"},"Attributes":{"K8S_CONTROLLER":"aws-cloud-map-mcs-controller-for-k8s 97072a6 (97072a6)"}},{"Id":"tcp-10_10_21_133-80","IP":"10.10.21.133","EndpointPort":{"Name":"","Port":80,"TargetPort":"","Protocol":"TCP"},"ServicePort":{"Name":"","Port":80,"TargetPort":"80","Protocol":"TCP"},"Attributes":{"K8S_CONTROLLER":"aws-cloud-map-mcs-controller-for-k8s 97072a6 (97072a6)"}},{"Id":"tcp-10_10_16_120-80","IP":"10.10.16.120","EndpointPort":{"Name":"","Port":80,"TargetPort":"","Protocol":"TCP"},"ServicePort":{"Name":"","Port":80,"TargetPort":"80","Protocol":"TCP"},"Attributes":{"K8S_CONTROLLER":"aws-cloud-map-mcs-controller-for-k8s 97072a6 (97072a6)"}}]}
+$ kubectl logs cloud-map-mcs-controller-manager-5b9f959fc9-hmz88 -c manager --namespace cloud-map-mcs-system
+{"level":"info","ts":1641898137.1080713,"logger":"controllers.ServiceExport","msg":"updating Cloud Map service","namespace":"demo","name":"nginx-hello"}
+{"level":"info","ts":1641898137.1081324,"logger":"cloudmap","msg":"fetching a service","namespace":"demo","name":"nginx-hello"}
+{"level":"info","ts":1641898137.1082,"logger":"cloudmap","msg":"registering endpoints","namespaceName":"demo","serviceName":"nginx-hello","endpoints":[{"Id":"tcp-10_10_28_116-80","IP":"10.10.28.116","EndpointPort":{"Name":"","Port":80,"TargetPort":"","Protocol":"TCP"},"ServicePort":{"Name":"","Port":80,"TargetPort":"80","Protocol":"TCP"},"Attributes":{"K8S_CONTROLLER":"aws-cloud-map-mcs-controller-for-k8s 97072a6 (97072a6)"}},{"Id":"tcp-10_10_21_133-80","IP":"10.10.21.133","EndpointPort":{"Name":"","Port":80,"TargetPort":"","Protocol":"TCP"},"ServicePort":{"Name":"","Port":80,"TargetPort":"80","Protocol":"TCP"},"Attributes":{"K8S_CONTROLLER":"aws-cloud-map-mcs-controller-for-k8s 97072a6 (97072a6)"}},{"Id":"tcp-10_10_16_120-80","IP":"10.10.16.120","EndpointPort":{"Name":"","Port":80,"TargetPort":"","Protocol":"TCP"},"ServicePort":{"Name":"","Port":80,"TargetPort":"80","Protocol":"TCP"},"Attributes":{"K8S_CONTROLLER":"aws-cloud-map-mcs-controller-for-k8s 97072a6 (97072a6)"}}]}
 ```
 
  Using the AWS CLI we can verify Namespace and Service resources provisioned to Cloud Map by the Cluster 1 MCS-Controller:
 
 ```bash
-$ aws servicediscovery list-namespaces{    "Namespaces": [        {            "Id": "ns-nlnawwa2wa3ajoh3",            "Arn": "arn:aws:servicediscovery:ap-southeast-2:911483634971:namespace/ns-nlnawwa2wa3ajoh3",            "Name": "demo",            "Type": "HTTP",            "Properties": {                "DnsProperties": {                    "SOA": {}                },                "HttpProperties": {                    "HttpName": "demo"                }            },            "CreateDate": "2022-01-11T08:05:21.815000+00:00"        }    ]}$ aws servicediscovery list-services{    "Services": [        {            "Id": "srv-xqirlhajwua5vkvo",            "Arn": "arn:aws:servicediscovery:ap-southeast-2:911483634971:service/srv-xqirlhajwua5vkvo",            "Name": "nginx-hello",            "Type": "HTTP",            "DnsConfig": {},            "CreateDate": "2022-01-11T08:05:22.061000+00:00"        }    ]}$ aws servicediscovery discover-instances --namespace-name demo --service-name nginx-hello{    "Instances": [        {            "InstanceId": "tcp-10_10_21_133-80",            "NamespaceName": "demo",            "ServiceName": "nginx-hello",            "HealthStatus": "UNKNOWN",            "Attributes": {                "AWS_INSTANCE_IPV4": "10.10.21.133",                "AWS_INSTANCE_PORT": "80",                "ENDPOINT_PORT_NAME": "",                "ENDPOINT_PROTOCOL": "TCP",                "K8S_CONTROLLER": "aws-cloud-map-mcs-controller-for-k8s 97072a6 (97072a6)",                "SERVICE_PORT": "80",                "SERVICE_PORT_NAME": "",                "SERVICE_PROTOCOL": "TCP",                "SERVICE_TARGET_PORT": "80"            }        },        {            "InstanceId": "tcp-10_10_28_116-80",            "NamespaceName": "demo",            "ServiceName": "nginx-hello",            "HealthStatus": "UNKNOWN",            "Attributes": {                "AWS_INSTANCE_IPV4": "10.10.28.116",                "AWS_INSTANCE_PORT": "80",                "ENDPOINT_PORT_NAME": "",                "ENDPOINT_PROTOCOL": "TCP",                "K8S_CONTROLLER": "aws-cloud-map-mcs-controller-for-k8s 97072a6 (97072a6)",                "SERVICE_PORT": "80",                "SERVICE_PORT_NAME": "",                "SERVICE_PROTOCOL": "TCP",                "SERVICE_TARGET_PORT": "80"            }        },        {            "InstanceId": "tcp-10_10_16_120-80",            "NamespaceName": "demo",            "ServiceName": "nginx-hello",            "HealthStatus": "UNKNOWN",            "Attributes": {                "AWS_INSTANCE_IPV4": "10.10.16.120",                "AWS_INSTANCE_PORT": "80",                "ENDPOINT_PORT_NAME": "",                "ENDPOINT_PROTOCOL": "TCP",                "K8S_CONTROLLER": "aws-cloud-map-mcs-controller-for-k8s 97072a6 (97072a6)",                "SERVICE_PORT": "80",                "SERVICE_PORT_NAME": "",                "SERVICE_PROTOCOL": "TCP",                "SERVICE_TARGET_PORT": "80"            }        }    ]}
+$ aws servicediscovery list-namespaces
+{
+    "Namespaces": [
+        {
+            "Id": "ns-nlnawwa2wa3ajoh3",
+            "Arn": "arn:aws:servicediscovery:ap-southeast-2:911483634971:namespace/ns-nlnawwa2wa3ajoh3",
+            "Name": "demo",
+            "Type": "HTTP",
+            "Properties": {
+                "DnsProperties": {
+                    "SOA": {}
+                },
+                "HttpProperties": {
+                    "HttpName": "demo"
+                }
+            },
+            "CreateDate": "2022-01-11T08:05:21.815000+00:00"
+        }
+    ]
+}
+
+$ aws servicediscovery list-services
+{
+    "Services": [
+        {
+            "Id": "srv-xqirlhajwua5vkvo",
+            "Arn": "arn:aws:servicediscovery:ap-southeast-2:911483634971:service/srv-xqirlhajwua5vkvo",
+            "Name": "nginx-hello",
+            "Type": "HTTP",
+            "DnsConfig": {},
+            "CreateDate": "2022-01-11T08:05:22.061000+00:00"
+        }
+    ]
+}
+$ aws servicediscovery discover-instances --namespace-name demo --service-name nginx-hello
+{
+    "Instances": [
+        {
+            "InstanceId": "tcp-10_10_21_133-80",
+            "NamespaceName": "demo",
+            "ServiceName": "nginx-hello",
+            "HealthStatus": "UNKNOWN",
+            "Attributes": {
+                "AWS_INSTANCE_IPV4": "10.10.21.133",
+                "AWS_INSTANCE_PORT": "80",
+                "ENDPOINT_PORT_NAME": "",
+                "ENDPOINT_PROTOCOL": "TCP",
+                "K8S_CONTROLLER": "aws-cloud-map-mcs-controller-for-k8s 97072a6 (97072a6)",
+                "SERVICE_PORT": "80",
+                "SERVICE_PORT_NAME": "",
+                "SERVICE_PROTOCOL": "TCP",
+                "SERVICE_TARGET_PORT": "80"
+            }
+        },
+        {
+            "InstanceId": "tcp-10_10_28_116-80",
+            "NamespaceName": "demo",
+            "ServiceName": "nginx-hello",
+            "HealthStatus": "UNKNOWN",
+            "Attributes": {
+                "AWS_INSTANCE_IPV4": "10.10.28.116",
+                "AWS_INSTANCE_PORT": "80",
+                "ENDPOINT_PORT_NAME": "",
+                "ENDPOINT_PROTOCOL": "TCP",
+                "K8S_CONTROLLER": "aws-cloud-map-mcs-controller-for-k8s 97072a6 (97072a6)",
+                "SERVICE_PORT": "80",
+                "SERVICE_PORT_NAME": "",
+                "SERVICE_PROTOCOL": "TCP",
+                "SERVICE_TARGET_PORT": "80"
+            }
+        },
+        {
+            "InstanceId": "tcp-10_10_16_120-80",
+            "NamespaceName": "demo",
+            "ServiceName": "nginx-hello",
+            "HealthStatus": "UNKNOWN",
+            "Attributes": {
+                "AWS_INSTANCE_IPV4": "10.10.16.120",
+                "AWS_INSTANCE_PORT": "80",
+                "ENDPOINT_PORT_NAME": "",
+                "ENDPOINT_PROTOCOL": "TCP",
+                "K8S_CONTROLLER": "aws-cloud-map-mcs-controller-for-k8s 97072a6 (97072a6)",
+                "SERVICE_PORT": "80",
+                "SERVICE_PORT_NAME": "",
+                "SERVICE_PROTOCOL": "TCP",
+                "SERVICE_TARGET_PORT": "80"
+            }
+        }
+    ]
+}
 ```
 
 ##### Cluster 2
@@ -321,19 +431,44 @@ $ aws servicediscovery list-namespaces{    "Namespaces": [        {            "
 Inspecting the MCS-Controller logs in Cluster 2, we see that the controller has detected the `nginx-hello` Cloud Map Service, and created the corresponding Kubernetes `ServiceImport`:
 
 ```bash
-$ kubectl logs cloud-map-mcs-controller-manager-5b9f959fc9-v72s4 -c manager --namespace cloud-map-mcs-system{"level":"info","ts":1641898834.16522,"logger":"controllers.Cloudmap","msg":"created ServiceImport","namespace":"demo","name":"nginx-hello"}{"level":"error","ts":1641898834.1654398,"logger":"controllers.Cloudmap","msg":"error when syncing service","namespace":"demo","name":"nginx-hello","error":"ServiceImport.multicluster.x-k8s.io \"nginx-hello\" not found","stacktrace":"github.com/go-logr/zapr.(*zapLogger).Error\n\t/go/pkg/mod/github.com/go-logr/zapr@v0.2.0/zapr.go:132\ngithub.com/aws/aws-cloud-map-mcs-controller-for-k8s/pkg/common.logger.Error\n\t/workspace/pkg/common/logger.go:39\ngithub.com/aws/aws-cloud-map-mcs-controller-for-k8s/pkg/controllers.(*CloudMapReconciler).reconcileNamespace\n\t/workspace/pkg/controllers/cloudmap_controller.go:98\ngithub.com/aws/aws-cloud-map-mcs-controller-for-k8s/pkg/controllers.(*CloudMapReconciler).Reconcile\n\t/workspace/pkg/controllers/cloudmap_controller.go:63\ngithub.com/aws/aws-cloud-map-mcs-controller-for-k8s/pkg/controllers.(*CloudMapReconciler).Start\n\t/workspace/pkg/controllers/cloudmap_controller.go:41\nsigs.k8s.io/controller-runtime/pkg/manager.(*controllerManager).startRunnable.func1\n\t/go/pkg/mod/sigs.k8s.io/controller-runtime@v0.8.3/pkg/manager/internal.go:681"}{"level":"info","ts":1641898836.19138,"logger":"controllers.Cloudmap","msg":"created derived Service","namespace":"demo","name":"imported-lia6jf8qe0"}{"level":"info","ts":1641898836.20201,"logger":"controllers.Cloudmap","msg":"updated ServiceImport","namespace":"demo","name":"nginx-hello","IP":["172.20.179.134"],"ports":[{"protocol":"TCP","port":80}]}
+$ kubectl logs cloud-map-mcs-controller-manager-5b9f959fc9-v72s4 -c manager --namespace cloud-map-mcs-system
+{"level":"info","ts":1641898834.16522,"logger":"controllers.Cloudmap","msg":"created ServiceImport","namespace":"demo","name":"nginx-hello"}
+{"level":"error","ts":1641898834.1654398,"logger":"controllers.Cloudmap","msg":"error when syncing service","namespace":"demo","name":"nginx-hello","error":"ServiceImport.multicluster.x-k8s.io \"nginx-hello\" not found","stacktrace":"github.com/go-logr/zapr.(*zapLogger).Error\n\t/go/pkg/mod/github.com/go-logr/zapr@v0.2.0/zapr.go:132\ngithub.com/aws/aws-cloud-map-mcs-controller-for-k8s/pkg/common.logger.Error\n\t/workspace/pkg/common/logger.go:39\ngithub.com/aws/aws-cloud-map-mcs-controller-for-k8s/pkg/controllers.(*CloudMapReconciler).reconcileNamespace\n\t/workspace/pkg/controllers/cloudmap_controller.go:98\ngithub.com/aws/aws-cloud-map-mcs-controller-for-k8s/pkg/controllers.(*CloudMapReconciler).Reconcile\n\t/workspace/pkg/controllers/cloudmap_controller.go:63\ngithub.com/aws/aws-cloud-map-mcs-controller-for-k8s/pkg/controllers.(*CloudMapReconciler).Start\n\t/workspace/pkg/controllers/cloudmap_controller.go:41\nsigs.k8s.io/controller-runtime/pkg/manager.(*controllerManager).startRunnable.func1\n\t/go/pkg/mod/sigs.k8s.io/controller-runtime@v0.8.3/pkg/manager/internal.go:681"}
+{"level":"info","ts":1641898836.19138,"logger":"controllers.Cloudmap","msg":"created derived Service","namespace":"demo","name":"imported-lia6jf8qe0"}
+{"level":"info","ts":1641898836.20201,"logger":"controllers.Cloudmap","msg":"updated ServiceImport","namespace":"demo","name":"nginx-hello","IP":["172.20.179.134"],"ports":[{"protocol":"TCP","port":80}]}
 ```
 
 Inspecting the Cluster 2 Kubernetes `ServiceImport` object: 
 
 ```bash
-$ kubectl get serviceimports.multicluster.x-k8s.io nginx-hello -n demo -o yamlapiVersion: multicluster.x-k8s.io/v1alpha1kind: ServiceImportmetadata:  annotations:    multicluster.k8s.aws/derived-service: imported-lia6jf8qe0  creationTimestamp: "2022-01-11T11:00:34Z"  generation: 2  name: nginx-hello  namespace: demo  resourceVersion: "5855"  uid: 62925de9-2bce-44e5-b6c3-7ca68f1536dbspec:  ips:  - 172.20.179.134  ports:  - port: 80    protocol: TCP  type: ClusterSetIPstatus: {}
+$ kubectl get serviceimports.multicluster.x-k8s.io nginx-hello -n demo -o yaml
+apiVersion: multicluster.x-k8s.io/v1alpha1
+kind: ServiceImport
+metadata:
+  annotations:
+    multicluster.k8s.aws/derived-service: imported-lia6jf8qe0
+  creationTimestamp: "2022-01-11T11:00:34Z"
+  generation: 2
+  name: nginx-hello
+  namespace: demo
+  resourceVersion: "5855"
+  uid: 62925de9-2bce-44e5-b6c3-7ca68f1536db
+spec:
+  ips:
+  - 172.20.179.134
+  ports:
+  - port: 80
+    protocol: TCP
+  type: ClusterSetIP
+status: {}
 ```
 
 And the corresponding Cluster 2 Kubernetes Endpoint Slice:
 
 ```bash
-$ kubectl get endpointslices.discovery.k8s.io -n demoNAME                        ADDRESSTYPE   PORTS   ENDPOINTS                                AGEimported-lia6jf8qe0-fxppx   IPv4          80      10.10.16.120,10.10.21.133,10.10.28.116   52m
+$ kubectl get endpointslices.discovery.k8s.io -n demo
+NAME                        ADDRESSTYPE   PORTS   ENDPOINTS                                AGE
+imported-lia6jf8qe0-fxppx   IPv4          80      10.10.16.120,10.10.21.133,10.10.28.116   52m
 ```
 
 Important points to note:
@@ -358,7 +493,13 @@ kubectl apply -f \config\client-hello.yaml
 Let's exec into the `client-hello` Pod and perform an `nslookup` to cluster-local CoreDNS for the `ServiceImport` Service `nginx-hello.demo.svc.clusterset.local`:
 
 ```bash
-$ kubectl exec -it client-hello -n demo /bin/sh/ # nslookup nginx-hello.demo.svc.clusterset.localServer:         172.20.0.10Address:        172.20.0.10:53Name:   nginx-hello.demo.svc.clusterset.localAddress: 172.20.179.134
+$ kubectl exec -it client-hello -n demo /bin/sh
+/ # nslookup nginx-hello.demo.svc.clusterset.local
+Server:         172.20.0.10
+Address:        172.20.0.10:53
+
+Name:   nginx-hello.demo.svc.clusterset.local
+Address: 172.20.179.134
 ```
 
 Note that the Pod resolves the address of the `ServiceImport` object on Cluster 2.
@@ -366,7 +507,26 @@ Note that the Pod resolves the address of the `ServiceImport` object on Cluster 
 Finally, we generate HTTP requests from the `client-hello` Pod to the local `nginx-hello` `ServiceImport` Service:
 
 ```bash
-/ # curl nginx-hello.demo.svc.clusterset.localServer address: 10.10.28.116:80Server name: nginx-demo-59c6cb8d7b-t7q88Date: 11/Jan/2022:12:07:10 +0000URI: /Request ID: 0fd11cf4de48e204a73bacb283afed7a/ # / # curl nginx-hello.demo.svc.clusterset.localServer address: 10.10.16.120:80Server name: nginx-demo-59c6cb8d7b-28n8pDate: 11/Jan/2022:12:07:28 +0000URI: /Request ID: 34a0f7ac5f88b42faeb2de205ca3ff33/ # / # curl nginx-hello.demo.svc.clusterset.localServer address: 10.10.21.133:80Server name: nginx-demo-59c6cb8d7b-tv8hfDate: 11/Jan/2022:12:07:35 +0000URI: /Request ID: cda0f25bcb40ade268bed2c9a9f75e91
+/ # curl nginx-hello.demo.svc.clusterset.local
+Server address: 10.10.28.116:80
+Server name: nginx-demo-59c6cb8d7b-t7q88
+Date: 11/Jan/2022:12:07:10 +0000
+URI: /
+Request ID: 0fd11cf4de48e204a73bacb283afed7a
+/ # 
+/ # curl nginx-hello.demo.svc.clusterset.local
+Server address: 10.10.16.120:80
+Server name: nginx-demo-59c6cb8d7b-28n8p
+Date: 11/Jan/2022:12:07:28 +0000
+URI: /
+Request ID: 34a0f7ac5f88b42faeb2de205ca3ff33
+/ # 
+/ # curl nginx-hello.demo.svc.clusterset.local
+Server address: 10.10.21.133:80
+Server name: nginx-demo-59c6cb8d7b-tv8hf
+Date: 11/Jan/2022:12:07:35 +0000
+URI: /
+Request ID: cda0f25bcb40ade268bed2c9a9f75e91
 ```
 
 Note that the responding Server Names and Server addresses are those of the `nginx-demo` Pods on Cluster 1 - confirming that the requests to the local `ClusterSetIP` at `nginx-hello.demo.svc.clusterset.local` originating on Cluster 2 are proxied cross-cluster to the Endpoints located on Cluster 1!
