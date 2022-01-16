@@ -473,11 +473,11 @@ imported-lia6jf8qe0-fxppx   IPv4          80      10.10.16.120,10.10.21.133,10.1
 Important points to note:
 
 - the `ServiceImport` Service is assigned an IP address from the local Kubernetes service IPv4 CIDR: 172.22.0.0/16 (172.20.179.134) so as to permit service discovery and access to the remote service endpoints from within the local cluster.
-- the endpoint IP addresses match those of the `nginx-demo` Endpoints in Cluster 1 (i.e. from the Cluster 1 VPC CIDR: 10.10.0.0/16).
+- the `EndpointSlice` IP addresses match those of the `nginx-demo` Endpoints in Cluster 1 (i.e. from the Cluster 1 VPC CIDR: 10.10.0.0/16).
 
 ### Service Consumption
 
-With the Solution Baseline and Service Provisioning in place, workloads in Cluster 2 are now able to consume the `nginx-hello` Service Endpoints located in Cluster 1 via the locally provisioned `ServiceImport` object. To complete the Service Consumption deployment scenario we'll deploy the `client-hello` Pod into Cluster 2, and observe how it's able to perform cross-cluster service consumption of the `nginx-hello` Service Endpoints in Cluster 1.
+With the Solution Baseline and Service Provisioning in place, workloads in Cluster 2 are now able to consume the nginx-hello Service Endpoints located in Cluster 1 via the locally provisioned ServiceImport object. To complete the Service Consumption scenario we'll deploy the client-hello Pod into Cluster 2, and observe how it's able to perform cross-cluster service discovery, and access each of the nginx-hello Service Endpoints in Cluster 1.
 
 #### Create `client-hello` Pod
 
