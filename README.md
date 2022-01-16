@@ -52,7 +52,7 @@ At the time of writing, the MCS-Controller release version is [v0.2.2](https://g
 
 #### AWS Cloud Map
 
-[AWS Cloud Map](https://aws.amazon.com/cloud-map) is a cloud resource discovery service that Cloud Map allows applications to discover web-based services via AWS SDK, API calls, or DNS queries. Cloud Map is a fully managed service which eliminates the need to set up, update, and manage your own service discovery tools and software.
+[AWS Cloud Map](https://aws.amazon.com/cloud-map) is a cloud resource discovery service that allows applications to discover web-based services via the AWS SDK, API calls, or DNS queries. Cloud Map is a fully managed service which eliminates the need to set up, update, and manage your own service discovery tools and software..
 
 ## Tutorial
 
@@ -76,7 +76,7 @@ In reference to the **Solution Baseline** diagram:
 - VPC peering is configured to permit network connectivity between workloads within each cluster.
 - The CoreDNS multicluster plugin is deployed to each cluster.
 - The AWS Cloud Map MCS Controller for Kubernetes is deployed to each cluster.
-- Clusters 1 & 2 are both configured as members of the same mcs-api clusterset.
+- Clusters 1 & 2 are both configured as members of the same mcs-api `ClusterSet`.
 - Clusters 1 & 2 are both provisioned with the namespace `demo`.
 - Cluster 1 has a `ClusterIP` Service `nginx-hello` deployed to the `demo` namespace which frontends a x3 replica Nginx deployment `nginx-demo`.
   - Service | nginx-hello: 172.20.150.33:80
@@ -206,7 +206,7 @@ eksctl utils associate-iam-oidc-provider \
 
 #### Implement CoreDNS multicluster plugin
 
-The CoreDNS multicluster plugin implements the [Kubernetes DNS-Based Multicluster Service Discovery Specification](https://github.com/kubernetes/enhancements/pull/2577) which enables CoreDNS to lifecycle manage DNS records for `serviceimprt` objects. To enable the CoreDNS multicluster plugin within both EKS clusters, perform the following procedure.
+The CoreDNS multicluster plugin implements the [Kubernetes DNS-Based Multicluster Service Discovery Specification](https://github.com/kubernetes/enhancements/pull/2577) which enables CoreDNS to lifecycle manage DNS records for `ServiceImport` objects. To enable the CoreDNS multicluster plugin within both EKS clusters, perform the following procedure.
 
 ##### Update CoreDNS RBAC
 
