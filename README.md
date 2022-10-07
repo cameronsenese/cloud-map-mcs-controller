@@ -12,7 +12,7 @@ As the rate of Kubernetes adoption continues to increase, there has been a corre
 - **Isolation** based concerns include performance (e.g. reduction in "noisy-neighbor" influence in mixed workload clusters), environmental (e.g. by staged or sandboxed workload constructs such as "dev", "test", and "prod" environments), security (e.g. separating untrusted code or sensitive data), organisational (e.g. teams fall under different business units or management domains), and cost based (e.g. teams are subject to separate budgetary constraints);
 - **Reliability** based concerns include blast radius and infrastructure diversity (e.g. preventing an application based or underlying infrastructure issue in one cluster or provider zone from impacting the entire solution), and scale based (e.g. the workload may outgrow a single cluster)
 
-![alt text](images/solution-overview-v0.01.png "Solution Overview")
+![alt text](images/solution-overview-v0.02.png "Solution Overview")
 
 
 Multi-cluster application architectures tend to be designed to either be **replicated** in nature - with this pattern each participating cluster runs a full copy of each given application; or alternatively they implement more of a **group-by-service** pattern where the services of a single application or system are split or divided amongst multiple clusters.
@@ -48,7 +48,7 @@ The [AWS Cloud Map MCS Controller for Kubernetes](https://github.com/aws/aws-clo
 
 The MCS-Controller is a controller that syncs services across clusters and makes them available for multi-cluster service discovery and connectivity. The implementation model is decentralsised, and utilises AWS Cloud Map as registry for management and distribution of multi-cluster service data.
 
-At the time of writing, the MCS-Controller release version is [v0.2.2](https://github.com/aws/aws-cloud-map-mcs-controller-for-k8s/releases/tag/v0.2.2). Milestones are currently in place to bring the project up to [v1.0 (GA)](https://github.com/aws/aws-cloud-map-mcs-controller-for-k8s/milestones) during the 2nd half of CY2022, which will include full compliance with the mcs-api specification, support for Multiple AWS accounts, headless services, and Cloud Map client-side traffic shaping.
+> *At the time of writing, the MCS-Controller release version is [v0.3.0](https://github.com/aws/aws-cloud-map-mcs-controller-for-k8s/releases/tag/v0.3.0) which introduces new features including the [ClusterProperty CRD](https://github.com/kubernetes/enhancements/tree/master/keps/sig-multicluster/2149-clusterid#-crd), and support for headless services. Milestones are currently in place to bring the project up to v1.0 (GA), which will include full compliance with the mcs-api specification, support for multiple AWS accounts, and Cloud Map client-side traffic shaping.*
 
 #### AWS Cloud Map
 
@@ -64,7 +64,7 @@ Let's consider a deployment scenario where we provision a Service into a single 
 
 #### Solution Baseline
 
-![alt text](images/solution-baseline-v0.01.png "Solution Baseline")
+![alt text](images/solution-baseline-v0.02.png "Solution Baseline")
 
 
 
@@ -80,14 +80,14 @@ In reference to the **Solution Baseline** diagram:
 - Clusters 1 & 2 are both provisioned with the namespace `demo`.
 - Cluster 1 has a `ClusterIP` Service `nginx-hello` deployed to the `demo` namespace which frontends a x3 replica Nginx deployment `nginx-demo`.
   - Service | nginx-hello: 172.20.150.33:80
-  - Endpoints | nginx-hello: 10.10.11.140:80,10.10.16.197:80,10.10.22.87:80
+  - Endpoints | nginx-hello: 10.10.66.181:80,10.10.78.125:80,10.10.86.76:80
 
 #### Service Provisioning
 
 With the required dependencies in place, the admin user is able to create a `ServiceExport` object in Cluster 1 for the `nginx-hello` Service, such that the MCS-Controller implementation will automatically provision a corresponding `ServiceImport` in Cluster 2 for consumer workloads to be able to locate and consume the exported service.
 
 
-![alt text](images/service-provisioning-v0.01.png "Service Provisioning")
+![alt text](images/service-provisioning-v0.02.png "Service Provisioning")
 
 In reference to the **Service Provisioning** diagram:
 
@@ -98,7 +98,7 @@ In reference to the **Service Provisioning** diagram:
 
 #### Service Consumption
 
-![alt text](images/service-consumption-v0.01.png "Service Consumption")
+![alt text](images/service-consumption-v0.02.png "Service Consumption")
 
 In reference to the **Service Consumption** diagram:
 
@@ -144,23 +144,21 @@ Run the following commands to create clusters using `eksctl`.
 Cluster 1:
 
 ```bash
-cd config
 export AWS_REGION=ap-southeast-2
 export CLUSTER_NAME=cls1
 export NODEGROUP_NAME=cls1-nodegroup1
 export VPC_CIDR=10.10.0.0/16
-envsubst < eksctl-cluster.yaml | eksctl create cluster -f -
+envsubst < config/eksctl-cluster.yaml | eksctl create cluster -f -
 ```
 
 Cluster 2:
 
 ```bash
-cd config
 export AWS_REGION=ap-southeast-2
 export CLUSTER_NAME=cls2
 export NODEGROUP_NAME=cls2-nodegroup1
 export VPC_CIDR=10.12.0.0/16
-envsubst < eksctl-cluster.yaml | eksctl create cluster -f -
+envsubst < config/eksctl-cluster.yaml | eksctl create cluster -f -
 ```
 
 #### Create VPC Peering Connection
@@ -213,7 +211,7 @@ The CoreDNS multicluster plugin implements the [Kubernetes DNS-Based Multicluste
 Run the following command against both clusters to update the `system:coredns` clusterrole to include access to additional multi-cluster API resources:
 
 ```bash
-kubectl apply -f \config\coredns-clusterrole.yaml
+kubectl apply -f config/coredns-clusterrole.yaml
 ```
 
 ##### Update the CoreDNS configmap
@@ -221,7 +219,7 @@ kubectl apply -f \config\coredns-clusterrole.yaml
 Run the following command against both clusters to update the default CoreDNS configmap to include the multicluster plugin directive, and `clusterset.local` zone:
 
 ```bash
-kubectl apply -f \config\coredns-configmap.yaml
+kubectl apply -f config/coredns-configmap.yaml
 ```
 
 ##### Update the CoreDNS deployment
@@ -229,7 +227,7 @@ kubectl apply -f \config\coredns-configmap.yaml
 Run the following command against both clusters to update the default CoreDNS deployment to use the container image `ghcr.io/aws/aws-cloud-map-mcs-controller-for-k8s/coredns-multicluster/coredns:v1.8.4` - which includes the multicluster plugin:
 
 ```bash
-kubectl apply -f \config\coredns-deployment.yaml
+kubectl apply -f config/coredns-deployment.yaml
 ```
 
 #### Install the aws-cloud-map-mcs-controller-for-k8s
@@ -273,13 +271,39 @@ eksctl create iamserviceaccount \
 ```
 
 ##### Install the MCS-Controller
+Now to install the MCS-Controller.
 
 - Environment variable AWS_REGION should be configured.
 
 Run the following command against both clusters to install the MCS-Controller latest release:
 
 ```bash
-export AWS_REGION=ap-southeast-2kubectl apply -k "github.com/aws/aws-cloud-map-mcs-controller-for-k8s/config/controller_install_latest"
+export AWS_REGION=ap-southeast-2
+kubectl apply -k "github.com/aws/aws-cloud-map-mcs-controller-for-k8s/config/controller_install_release"
+```
+
+##### Assign `clusterset` membership and `cluster` identifier
+To ensure that `ServiceExport` and  `ServiceImport` objects propagate correctly between clusters, each cluster should be configured as a member of a single `clusterset`, and should be assigned a unique `cluster` ID within the `clusterset`.
+
+- Environment variable CLUSTER_ID should be configured.
+- Environment variable CLUSTERSET_ID should be configured.
+
+Run the following commands to configure cluster  ID and clusterset membership.
+
+Cluster 1:
+
+```bash
+export CLUSTER_ID=cls1
+export CLUSTERSET_ID=clusterset1
+envsubst < config/mcsapi-clusterproperty.yaml | kubectl apply -f -
+```
+
+Cluster 2:
+
+```bash
+export CLUSTER_ID=cls2
+export CLUSTERSET_ID=clusterset1
+envsubst < config/mcsapi-clusterproperty.yaml | kubectl apply -f -
 ```
 
 #### Create `nginx-hello` Service
@@ -294,8 +318,8 @@ Cluster 1:
 
 ```bash
 kubectl create namespace demo
-kubectl apply -f \config\nginx-deployment.yaml
-kubectl apply -f \config\nginx-service.yaml
+kubectl apply -f config/nginx-deployment.yaml
+kubectl apply -f config/nginx-service.yaml
 ```
 
 Cluster 2:
@@ -326,9 +350,10 @@ Inspecting the MCS-Controller logs in Cluster 1, we see that the controller has 
 
 ```bash
 $ kubectl logs cloud-map-mcs-controller-manager-5b9f959fc9-hmz88 -c manager --namespace cloud-map-mcs-system
-{"level":"info","ts":1641898137.1080713,"logger":"controllers.ServiceExport","msg":"updating Cloud Map service","namespace":"demo","name":"nginx-hello"}
-{"level":"info","ts":1641898137.1081324,"logger":"cloudmap","msg":"fetching a service","namespace":"demo","name":"nginx-hello"}
-{"level":"info","ts":1641898137.1082,"logger":"cloudmap","msg":"registering endpoints","namespaceName":"demo","serviceName":"nginx-hello","endpoints":[{"Id":"tcp-10_10_28_116-80","IP":"10.10.28.116","EndpointPort":{"Name":"","Port":80,"TargetPort":"","Protocol":"TCP"},"ServicePort":{"Name":"","Port":80,"TargetPort":"80","Protocol":"TCP"},"Attributes":{"K8S_CONTROLLER":"aws-cloud-map-mcs-controller-for-k8s 97072a6 (97072a6)"}},{"Id":"tcp-10_10_21_133-80","IP":"10.10.21.133","EndpointPort":{"Name":"","Port":80,"TargetPort":"","Protocol":"TCP"},"ServicePort":{"Name":"","Port":80,"TargetPort":"80","Protocol":"TCP"},"Attributes":{"K8S_CONTROLLER":"aws-cloud-map-mcs-controller-for-k8s 97072a6 (97072a6)"}},{"Id":"tcp-10_10_16_120-80","IP":"10.10.16.120","EndpointPort":{"Name":"","Port":80,"TargetPort":"","Protocol":"TCP"},"ServicePort":{"Name":"","Port":80,"TargetPort":"80","Protocol":"TCP"},"Attributes":{"K8S_CONTROLLER":"aws-cloud-map-mcs-controller-for-k8s 97072a6 (97072a6)"}}]}
+{"level":"info","ts":1665108812.7046816,"logger":"cloudmap","msg":"namespace created","nsId":"ns-nlnawwa2wa3ajoh3"}
+{"level":"info","ts":1665108812.7626762,"logger":"cloudmap","msg":"service created","namespace":"demo","name":"nginx-hello","id":"srv-xqirlhajwua5vkvo"}
+{"level":"info","ts":1665108812.7627065,"logger":"cloudmap","msg":"fetching a service","namespace":"demo","name":"nginx-hello"}
+{"level":"info","ts":1665108812.8299918,"logger":"cloudmap","msg":"registering endpoints","namespaceName":"demo","serviceName":"nginx-hello","endpoints":[{"Id":"tcp-10_10_86_76-80","IP":"10.10.86.76","EndpointPort":{"Name":"","Port":80,"TargetPort":"","Protocol":"TCP"},"ServicePort":{"Name":"","Port":80,"TargetPort":"80","Protocol":"TCP"},"ClusterId":"cls1","ClusterSetId":"clusterset1","ServiceType":"ClusterSetIP","ServiceExportCreationTimestamp":1665108776000,"Ready":true,"Hostname":"","Nodename":"ip-10-10-77-143.ap-southeast-2.compute.internal","Attributes":{"K8S_CONTROLLER":"aws-cloud-map-mcs-controller-for-k8s d07e680 (d07e680)"}},{"Id":"tcp-10_10_66_181-80","IP":"10.10.66.181","EndpointPort":{"Name":"","Port":80,"TargetPort":"","Protocol":"TCP"},"ServicePort":{"Name":"","Port":80,"TargetPort":"80","Protocol":"TCP"},"ClusterId":"cls1","ClusterSetId":"clusterset1","ServiceType":"ClusterSetIP","ServiceExportCreationTimestamp":1665108776000,"Ready":true,"Hostname":"","Nodename":"ip-10-10-77-143.ap-southeast-2.compute.internal","Attributes":{"K8S_CONTROLLER":"aws-cloud-map-mcs-controller-for-k8s d07e680 (d07e680)"}},{"Id":"tcp-10_10_78_125-80","IP":"10.10.78.125","EndpointPort":{"Name":"","Port":80,"TargetPort":"","Protocol":"TCP"},"ServicePort":{"Name":"","Port":80,"TargetPort":"80","Protocol":"TCP"},"ClusterId":"cls1","ClusterSetId":"clusterset1","ServiceType":"ClusterSetIP","ServiceExportCreationTimestamp":1665108776000,"Ready":true,"Hostname":"","Nodename":"ip-10-10-77-143.ap-southeast-2.compute.internal","Attributes":{"K8S_CONTROLLER":"aws-cloud-map-mcs-controller-for-k8s d07e680 (d07e680)"}}]}
 ```
 
  Using the AWS CLI we can verify Namespace and Service resources provisioned to Cloud Map by the Cluster 1 MCS-Controller:
@@ -350,11 +375,10 @@ $ aws servicediscovery list-namespaces
                     "HttpName": "demo"
                 }
             },
-            "CreateDate": "2022-01-11T08:05:21.815000+00:00"
+            "CreateDate": "2022-10-07T02:13:32.310000+00:00"
         }
     ]
 }
-
 $ aws servicediscovery list-services
 {
     "Services": [
@@ -364,7 +388,7 @@ $ aws servicediscovery list-services
             "Name": "nginx-hello",
             "Type": "HTTP",
             "DnsConfig": {},
-            "CreateDate": "2022-01-11T08:05:22.061000+00:00"
+            "CreateDate": "2022-10-07T02:13:32.744000+00:00"
         }
     ]
 }
@@ -372,54 +396,75 @@ $ aws servicediscovery discover-instances --namespace-name demo --service-name n
 {
     "Instances": [
         {
-            "InstanceId": "tcp-10_10_21_133-80",
+            "InstanceId": "tcp-10_10_78_125-80",
             "NamespaceName": "demo",
             "ServiceName": "nginx-hello",
             "HealthStatus": "UNKNOWN",
             "Attributes": {
-                "AWS_INSTANCE_IPV4": "10.10.21.133",
+                "AWS_INSTANCE_IPV4": "10.10.78.125",
                 "AWS_INSTANCE_PORT": "80",
+                "CLUSTERSET_ID": "clusterset1",
+                "CLUSTER_ID": "cls1",
                 "ENDPOINT_PORT_NAME": "",
                 "ENDPOINT_PROTOCOL": "TCP",
-                "K8S_CONTROLLER": "aws-cloud-map-mcs-controller-for-k8s 97072a6 (97072a6)",
+                "HOSTNAME": "",
+                "K8S_CONTROLLER": "aws-cloud-map-mcs-controller-for-k8s d07e680 (d07e680)",
+                "NODENAME": "ip-10-10-77-143.ap-southeast-2.compute.internal",
+                "READY": "true",
+                "SERVICE_EXPORT_CREATION_TIMESTAMP": "1665108776000",
                 "SERVICE_PORT": "80",
                 "SERVICE_PORT_NAME": "",
                 "SERVICE_PROTOCOL": "TCP",
-                "SERVICE_TARGET_PORT": "80"
+                "SERVICE_TARGET_PORT": "80",
+                "SERVICE_TYPE": "ClusterSetIP"
             }
         },
         {
-            "InstanceId": "tcp-10_10_28_116-80",
+            "InstanceId": "tcp-10_10_66_181-80",
             "NamespaceName": "demo",
             "ServiceName": "nginx-hello",
             "HealthStatus": "UNKNOWN",
             "Attributes": {
-                "AWS_INSTANCE_IPV4": "10.10.28.116",
+                "AWS_INSTANCE_IPV4": "10.10.66.181",
                 "AWS_INSTANCE_PORT": "80",
+                "CLUSTERSET_ID": "clusterset1",
+                "CLUSTER_ID": "cls1",
                 "ENDPOINT_PORT_NAME": "",
                 "ENDPOINT_PROTOCOL": "TCP",
-                "K8S_CONTROLLER": "aws-cloud-map-mcs-controller-for-k8s 97072a6 (97072a6)",
+                "HOSTNAME": "",
+                "K8S_CONTROLLER": "aws-cloud-map-mcs-controller-for-k8s d07e680 (d07e680)",
+                "NODENAME": "ip-10-10-77-143.ap-southeast-2.compute.internal",
+                "READY": "true",
+                "SERVICE_EXPORT_CREATION_TIMESTAMP": "1665108776000",
                 "SERVICE_PORT": "80",
                 "SERVICE_PORT_NAME": "",
                 "SERVICE_PROTOCOL": "TCP",
-                "SERVICE_TARGET_PORT": "80"
+                "SERVICE_TARGET_PORT": "80",
+                "SERVICE_TYPE": "ClusterSetIP"
             }
         },
         {
-            "InstanceId": "tcp-10_10_16_120-80",
+            "InstanceId": "tcp-10_10_86_76-80",
             "NamespaceName": "demo",
             "ServiceName": "nginx-hello",
             "HealthStatus": "UNKNOWN",
             "Attributes": {
-                "AWS_INSTANCE_IPV4": "10.10.16.120",
+                "AWS_INSTANCE_IPV4": "10.10.86.76",
                 "AWS_INSTANCE_PORT": "80",
+                "CLUSTERSET_ID": "clusterset1",
+                "CLUSTER_ID": "cls1",
                 "ENDPOINT_PORT_NAME": "",
                 "ENDPOINT_PROTOCOL": "TCP",
-                "K8S_CONTROLLER": "aws-cloud-map-mcs-controller-for-k8s 97072a6 (97072a6)",
+                "HOSTNAME": "",
+                "K8S_CONTROLLER": "aws-cloud-map-mcs-controller-for-k8s d07e680 (d07e680)",
+                "NODENAME": "ip-10-10-77-143.ap-southeast-2.compute.internal",
+                "READY": "true",
+                "SERVICE_EXPORT_CREATION_TIMESTAMP": "1665108776000",
                 "SERVICE_PORT": "80",
                 "SERVICE_PORT_NAME": "",
                 "SERVICE_PROTOCOL": "TCP",
-                "SERVICE_TARGET_PORT": "80"
+                "SERVICE_TARGET_PORT": "80",
+                "SERVICE_TYPE": "ClusterSetIP"
             }
         }
     ]
@@ -432,9 +477,10 @@ Inspecting the MCS-Controller logs in Cluster 2, we see that the controller has 
 
 ```bash
 $ kubectl logs cloud-map-mcs-controller-manager-5b9f959fc9-v72s4 -c manager --namespace cloud-map-mcs-system
-{"level":"info","ts":1641898834.16522,"logger":"controllers.Cloudmap","msg":"created ServiceImport","namespace":"demo","name":"nginx-hello"}
-{"level":"info","ts":1641898836.19138,"logger":"controllers.Cloudmap","msg":"created derived Service","namespace":"demo","name":"imported-lia6jf8qe0"}
-{"level":"info","ts":1641898836.20201,"logger":"controllers.Cloudmap","msg":"updated ServiceImport","namespace":"demo","name":"nginx-hello","IP":["172.20.179.134"],"ports":[{"protocol":"TCP","port":80}]}
+{"level":"info","ts":1665108822.2781157,"logger":"controllers.Cloudmap","msg":"created ServiceImport","namespace":"demo","name":"nginx-hello"}
+{"level":"info","ts":1665108824.2420218,"logger":"controllers.Cloudmap","msg":"created derived Service","namespace":"demo","name":"imported-9cfu7k5mkr"}
+{"level":"info","ts":1665108824.2501283,"logger":"controllers.Cloudmap","msg":"ServiceImport IPs need update","ServiceImport IPs":[],"cluster IPs":["172.20.80.119"]}
+{"level":"info","ts":1665108824.2618752,"logger":"controllers.Cloudmap","msg":"updated ServiceImport","namespace":"demo","name":"nginx-hello","IP":["172.20.80.119"],"ports":[{"protocol":"TCP","port":80}]}
 ```
 
 Inspecting the Cluster 2 Kubernetes `ServiceImport` object: 
@@ -445,34 +491,36 @@ apiVersion: multicluster.x-k8s.io/v1alpha1
 kind: ServiceImport
 metadata:
   annotations:
-    multicluster.k8s.aws/derived-service: imported-lia6jf8qe0
-  creationTimestamp: "2022-01-11T11:00:34Z"
+    multicluster.k8s.aws/derived-service: '[{"cluster":"cls1","derived-service":"imported-9cfu7k5mkr"}]'
+  creationTimestamp: "2022-10-07T02:13:42Z"
   generation: 2
   name: nginx-hello
   namespace: demo
-  resourceVersion: "5855"
-  uid: 62925de9-2bce-44e5-b6c3-7ca68f1536db
+  resourceVersion: "12787"
+  uid: a53901af-57a8-49c7-aeb1-f67c4a44c2d2
 spec:
   ips:
-  - 172.20.179.134
+  - 172.20.80.119
   ports:
   - port: 80
     protocol: TCP
   type: ClusterSetIP
-status: {}
+status:
+  clusters:
+  - cluster: cls1
 ```
 
 And the corresponding Cluster 2 Kubernetes Endpoint Slice:
 
 ```bash
 $ kubectl get endpointslices.discovery.k8s.io -n demo
-NAME                        ADDRESSTYPE   PORTS   ENDPOINTS                                AGE
-imported-lia6jf8qe0-fxppx   IPv4          80      10.10.16.120,10.10.21.133,10.10.28.116   52m
+NAME                        ADDRESSTYPE   PORTS   ENDPOINTS                               AGE
+imported-9cfu7k5mkr-dc7q9   IPv4          80      10.10.78.125,10.10.86.76,10.10.66.181   14m
 ```
 
 Important points to note:
 
-- the `ServiceImport` Service is assigned an IP address from the local Kubernetes service IPv4 CIDR: 172.22.0.0/16 (172.20.179.134) so as to permit service discovery and access to the remote service endpoints from within the local cluster.
+- the `ServiceImport` Service is assigned an IP address from the local Kubernetes service IPv4 CIDR: 172.22.0.0/16 (172.20.80.119) so as to permit service discovery and access to the remote service endpoints from within the local cluster.
 - the `EndpointSlice` IP addresses match those of the `nginx-demo` Endpoints in Cluster 1 (i.e. from the Cluster 1 VPC CIDR: 10.10.0.0/16).
 
 ### Service Consumption
@@ -484,7 +532,7 @@ With the Solution Baseline and Service Provisioning in place, workloads in Clust
 Run the following command against Cluster 2 create the `client-hello` Pod:
 
 ```bash
-kubectl apply -f \config\client-hello.yaml
+kubectl apply -f config/client-hello.yaml
 ```
 
 #### Verify multi-cluster service consumption
@@ -498,7 +546,7 @@ Server:         172.20.0.10
 Address:        172.20.0.10:53
 
 Name:   nginx-hello.demo.svc.clusterset.local
-Address: 172.20.179.134
+Address: 172.20.80.119
 ```
 
 Note that the Pod resolves the address of the `ServiceImport` object on Cluster 2.
@@ -506,26 +554,27 @@ Note that the Pod resolves the address of the `ServiceImport` object on Cluster 
 Finally, we generate HTTP requests from the `client-hello` Pod to the local `nginx-hello` `ServiceImport` Service:
 
 ```bash
+/ # apk --no-cache add curl
 / # curl nginx-hello.demo.svc.clusterset.local
-Server address: 10.10.28.116:80
-Server name: nginx-demo-59c6cb8d7b-t7q88
-Date: 11/Jan/2022:12:07:10 +0000
+Server address: 10.10.86.76:80
+Server name: nginx-demo-59c6cb8d7b-m4ktw
+Date: 07/Oct/2022:02:31:45 +0000
 URI: /
-Request ID: 0fd11cf4de48e204a73bacb283afed7a
+Request ID: 17d43e6e8801a98d05059dfaf88d0abe
 / # 
 / # curl nginx-hello.demo.svc.clusterset.local
-Server address: 10.10.16.120:80
-Server name: nginx-demo-59c6cb8d7b-28n8p
-Date: 11/Jan/2022:12:07:28 +0000
+Server address: 10.10.78.125:80
+Server name: nginx-demo-59c6cb8d7b-8w6rp
+Date: 07/Oct/2022:02:32:26 +0000
 URI: /
-Request ID: 34a0f7ac5f88b42faeb2de205ca3ff33
+Request ID: 0ddc09ffe7fd45c52903ce34c955f555
 / # 
 / # curl nginx-hello.demo.svc.clusterset.local
-Server address: 10.10.21.133:80
-Server name: nginx-demo-59c6cb8d7b-tv8hf
-Date: 11/Jan/2022:12:07:35 +0000
+Server address: 10.10.66.181:80
+Server name: nginx-demo-59c6cb8d7b-mtm8l
+Date: 07/Oct/2022:02:32:53 +0000
 URI: /
-Request ID: cda0f25bcb40ade268bed2c9a9f75e91
+Request ID: 2fde1c34008a5ec18b8ae23797489c3a
 ```
 
 Note that the responding Server Names and Server addresses are those of the `nginx-demo` Pods on Cluster 1 - confirming that the requests to the local `ClusterSetIP` at `nginx-hello.demo.svc.clusterset.local` originating on Cluster 2 are proxied cross-cluster to the Endpoints located on Cluster 1!
