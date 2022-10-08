@@ -76,7 +76,9 @@ In reference to the **Solution Baseline** diagram:
 - VPC peering is configured to permit network connectivity between workloads within each cluster.
 - The CoreDNS multicluster plugin is deployed to each cluster.
 - The AWS Cloud Map MCS Controller for Kubernetes is deployed to each cluster.
-- Clusters 1 & 2 are both configured as members of the same mcs-api `ClusterSet`.
+- Clusters 1 & 2 are each configured as members of the same mcs-api `ClusterSet`.
+    - Cluster 1 mcs-api `ClusterSet`: clusterset1, `Cluster` Id: cls1.
+    - Cluster 2 mcs-api `ClusterSet`: clusterset1, `Cluster` Id: cls2.
 - Clusters 1 & 2 are both provisioned with the namespace `demo`.
 - Cluster 1 has a `ClusterIP` Service `nginx-hello` deployed to the `demo` namespace which frontends a x3 replica Nginx deployment `nginx-demo`.
   - Service | nginx-hello: 172.20.150.33:80
@@ -282,13 +284,13 @@ export AWS_REGION=ap-southeast-2
 kubectl apply -k "github.com/aws/aws-cloud-map-mcs-controller-for-k8s/config/controller_install_release"
 ```
 
-##### Assign `clusterset` membership and `cluster` identifier
-To ensure that `ServiceExport` and  `ServiceImport` objects propagate correctly between clusters, each cluster should be configured as a member of a single `clusterset`, and should be assigned a unique `cluster` ID within the `clusterset`.
+##### Assign mcs-api `ClusterSet` membership and `Cluster` identifier
+To ensure that  `ServiceExport` and  `ServiceImport` objects propagate correctly between clusters, each cluster should be configured as a member of a single mcs-api `ClusterSet` (clusterset1 in our example deployment scenario), and should be assigned a unique mcs-api `Cluster` Id within the `ClusterSet` (cls1 & cls2 in our example deployment scenario).
 
 - Environment variable CLUSTER_ID should be configured.
 - Environment variable CLUSTERSET_ID should be configured.
 
-Run the following commands to configure cluster  ID and clusterset membership.
+Run the following commands to configure Cluster  Id and ClusterSet membership.
 
 Cluster 1:
 
